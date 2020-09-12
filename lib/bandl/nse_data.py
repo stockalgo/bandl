@@ -337,6 +337,9 @@ class NseData:
                 pass
         return dfs
 
+    def __format_df(self,dfs):
+        if not dfs.empty:
+            dfs.columns = dfs.columns.str.title()
 
     def get_data(self,symbol,series="EQ",start=None,end=None,periods=None,dayfirst=False):
         """To get NSE stock data
@@ -409,18 +412,9 @@ class NseData:
             # Converting the index as date
             dfs.index = pd.to_datetime(dfs.index)
             dfs = self.__get_data_adjusted(dfs,symbol,start=start,end=end,periods=periods)
+            #format dataframe
+            self.__format_df(dfs)
             return dfs
 
         except Exception as err:
             raise Exception("Error occurred while fetching stock data :", str(err))
-
-    def get_optionchain_data(self,symbol, expiry_date=None,dayfirst=False):
-        try:
-            if not expiry_date:
-                expiry_date = self.get_oc_exp_dates(symbol)[0]
-
-            oc_url = self.__nse_urls.get_option_chain_url(symbol, expiry_date,dayfirst)
-            # If the response was successful, no Exception will be raised
-            oc_page = self.__request.get(oc_url, headers = self.__headers)
-        except Exception as err:
-            pass
