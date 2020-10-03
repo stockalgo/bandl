@@ -69,7 +69,7 @@ class RequestUrl:
         retries = Retry(
                     total=max_retries,
                     backoff_factor=1,
-                    status_forcelist=[429, 500, 502, 503, 504],
+                    status_forcelist=[429, 500, 502, 503, 504,401,403],
                     )
         adapter = TimeoutHTTPAdapter(max_retries=retries ,timeout=timeout)
         session = requests.Session()
