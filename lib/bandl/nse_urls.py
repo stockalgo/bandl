@@ -46,6 +46,7 @@ class NseUrls:
         self.is_index = lambda symbol : True if "NIFTY" in symbol or "INDIA VIX" == symbol else False
 
         #new optionchani urls
+        self.OC_FIRST_TRY = "https://www.nseindia.com/option-chain"
         self.INDEX_OC_URL = "https://www.nseindia.com/api/option-chain-indices?symbol="
         self.STOCK_OC_URL = "https://www.nseindia.com/api/option-chain-equities?symbol="
 

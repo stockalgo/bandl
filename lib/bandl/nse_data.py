@@ -15,7 +15,7 @@ from bandl.request import RequestUrl
 
 #default params for url connection
 DEFAULT_TIMEOUT = 5 # seconds
-MAX_RETRIES = 2
+MAX_RETRIES = 3
 INDEX_DATA_LIMIT = 99
 STOCK_DATA_LIMIT = 240
 #default to last three month
@@ -40,6 +40,7 @@ class NseData:
         :rtype: integer
         """
         try:
+            hack = self.__request.get(self.__nse_urls.OC_FIRST_TRY,headers=self.__headers)
             base_oc_url = self.__nse_urls.get_oc_url(symbol)
             page = self.__request.get(base_oc_url,headers=self.__headers)
             oc_json = json.loads(page.text)
@@ -79,6 +80,7 @@ class NseData:
         :rtype: list/dictionary
         """
         try:
+            hack = self.__request.get(self.__nse_urls.OC_FIRST_TRY,headers=self.__headers)
             base_oc_url = self.__nse_urls.get_oc_url(symbol)
             page = self.__request.get(base_oc_url,headers=self.__headers)
             oc_json = json.loads(page.text)
@@ -111,6 +113,7 @@ class NseData:
         :rtype: list
         """
         try:
+            hack = self.__request.get(self.__nse_urls.OC_FIRST_TRY,headers=self.__headers)
             base_oc_url = self.__nse_urls.get_oc_url(symbol)
             page = self.__request.get(base_oc_url,headers=self.__headers)
             oc_json = json.loads(page.text)
@@ -119,6 +122,30 @@ class NseData:
 
         except Exception as err:
             raise Exception("something went wrong while fetching nse :", str(err))
+
+    def get_option_data(self,symbol,expiry_date=None,strikes=None):
+        try:
+            hack = self.__request.get(self.__nse_urls.OC_FIRST_TRY,headers=self.__headers)
+            base_oc_url = self.__nse_urls.get_oc_url(symbol)
+            page = self.__request.get(base_oc_url,headers=self.__headers)
+            oc_json = json.loads(page.text)
+            if not expiry_date:
+                oc_data = oc_json['filtered']['data']
+                oc_mapped_data = {}
+                for eachData in oc_data:
+                    strikePrice = eachData.get("strikePrice")
+                    if(strikes):
+                        if (strikePrice == strikes["ATM"]
+                            or strikePrice in strikes["ITM"]
+                            or strikePrice in strikes["OTM"]):
+                            oc_mapped_data[strikePrice] = {"CE":eachData.get("CE"),"PE":eachData.get("PE")}
+                    else:
+                        oc_mapped_data[strikePrice] = {"CE":eachData.get("CE"),"PE":eachData.get("PE")}
+                return oc_mapped_data
+        except Exception as err:
+            raise Exception("something went wrong while fetching nse :", str(err))
+
+
 
     def get_option_chain_df(self, symbol, expiry_date=None,dayfirst=False):
         """ This function fetches option chain data from NSE and returns in pandas.DataFrame
