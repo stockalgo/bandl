@@ -18,6 +18,12 @@ pip install bandl
 from bandl.nse_data import NseData()
 nd = NseData() # returns 'NseData object'. can be use to get nse data.
 ```
+#### To get Option chain data from New NSE website
+```python
+strikes = nd.get_oc_strike_prices("NIFTY")
+oc_data = nd.get_option_data("NIFTY",strikes=strikes)
+```
+
 #### To get Option chain data
 ```python
 expiry_dates = nd.get_oc_exp_dates(symbol) #return available expiry dates
