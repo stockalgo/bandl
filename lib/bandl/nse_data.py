@@ -108,6 +108,8 @@ class NseData:
 
         """get current  available expiry dates
 
+        :param symbol: stock/index symbol
+        :type symbol: string
         :raises Exception: NSE connection related
         :return: expiry dates
         :rtype: list
@@ -124,6 +126,18 @@ class NseData:
             raise Exception("something went wrong while fetching nse :", str(err))
 
     def get_option_data(self,symbol,expiry_date=None,strikes=None):
+        """[summary]
+
+        :param symbol: stock/index symbol
+        :type symbol: string
+        :param expiry_date: expiry date (all date formats accepted), defaults to next near
+        :type expiry_date: string, optional
+        :param strikes: Dictionary having OTM,ITM,ATM strikes, defaults to None
+        :type strikes: Dictionary, optional
+        :raises Exception: Connection related
+        :return: option data
+        :rtype: dictionary
+        """
         try:
             hack = self.__request.get(self.__nse_urls.OC_FIRST_TRY,headers=self.__headers)
             base_oc_url = self.__nse_urls.get_oc_url(symbol)
