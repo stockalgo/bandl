@@ -2,6 +2,7 @@ import os
 import concurrent.futures
 import io
 import math
+import json
 
 from datetime import datetime,timedelta
 import pandas as pd
@@ -30,6 +31,24 @@ class NseData:
         #create request
         self.__request = RequestUrl(timeout,max_retries)
 
+    def get_underlying_val(self,symbol):
+        """get value of underlying asset
+        :param symbol: stock/index symbol
+        :type symbol: string
+        :raises Exception: NSE connection related
+        :return: underlying value
+        :rtype: integer
+        """
+        try:
+            base_oc_url = self.__nse_urls.get_oc_url(symbol)
+            page = self.__request.get(base_oc_url,headers=self.__headers)
+            oc_json = json.loads(page.text)
+            underlying_val = oc_json['records']['underlyingValue']
+            return underlying_val
+
+        except Exception as err:
+            raise Exception("something went wrong while reading nse URL :", str(err))
+
     def get_indices(self):
         """To get list of NSE indices
         """
@@ -46,6 +65,43 @@ class NseData:
         except Exception as err:
             raise Exception("Error occurred while getting NSE indices :", str(err))
 
+    def get_oc_strike_prices(self,symbol,format=True,level=3):
+        """To get options strike prices or in OTM,ITM,ATM format
+
+        :param symbol: stock/index symbol
+        :type symbol: string
+        :param format: format in OTM,ITM,ATM, defaults to True
+        :type format: bool, optional
+        :param level: level of strike prices for ITM/OTM, defaults to 3
+        :type level: int, optional
+        :raises Exception: NSE connection related
+        :return: strike prices
+        :rtype: list/dictionary
+        """
+        try:
+            base_oc_url = self.__nse_urls.get_oc_url(symbol)
+            page = self.__request.get(base_oc_url,headers=self.__headers)
+            oc_json = json.loads(page.text)
+            underlying_val = oc_json['records']['underlyingValue']
+            strikePrices = oc_json['records']['strikePrices']
+            #if normat strike prices are requested then return as it is
+            if not format:
+                return strikePrices
+
+            strike_count = len(strikePrices)
+            #else lets format in OTM/ITM/ATM
+            atm_index= min(range(strike_count), key = lambda i: abs(strikePrices[i]-underlying_val))
+            strikes = {"ATM":strikePrices[atm_index],"ITM":[],"OTM":[]}
+            for index in range(level):
+                if index + atm_index < strike_count -1:
+                    strikes["OTM"].append(strikePrices[index+atm_index+1])
+                if atm_index - index > 1:
+                    strikes["ITM"].append(strikePrices[atm_index-index-1])
+            return strikes
+
+        except Exception as err:
+            raise Exception("something went wrong while fetching nse :", str(err))
+
     def get_oc_exp_dates(self,symbol):
 
         """get current  available expiry dates
@@ -55,16 +111,14 @@ class NseData:
         :rtype: list
         """
         try:
-            base_oc_url = self.__nse_urls.get_option_chain_url(symbol)
+            base_oc_url = self.__nse_urls.get_oc_url(symbol)
             page = self.__request.get(base_oc_url,headers=self.__headers)
-            soup = BeautifulSoup(page.text,'lxml')
-            table = soup.find("select",{"id":"date"})
-            expiry_out = table.find_all("option")
-            expiry_dates = [exp_date.get("value") for exp_date in expiry_out][1:]
+            oc_json = json.loads(page.text)
+            expiry_dates = oc_json['records']['expiryDates']
             return expiry_dates
 
         except Exception as err:
-            raise Exception("something went wrong while reading nse URL :", str(err))
+            raise Exception("something went wrong while fetching nse :", str(err))
 
     def get_option_chain_df(self, symbol, expiry_date=None,dayfirst=False):
         """ This function fetches option chain data from NSE and returns in pandas.DataFrame

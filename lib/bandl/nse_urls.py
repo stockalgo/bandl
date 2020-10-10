@@ -1,7 +1,7 @@
 from datetime import datetime,date
 import pandas as pd
 
-from bandl.helper import get_formated_date,get_date_range
+from bandl.helper import get_formated_date,get_date_range,is_ind_index
 
 class NseUrls:
     def __init__(self):
@@ -47,7 +47,7 @@ class NseUrls:
 
         #new optionchani urls
         self.INDEX_OC_URL = "https://www.nseindia.com/api/option-chain-indices?symbol="
-        self.STOCK_OC_URL = "https://www.nseindia.com/api/option-chain-equities?symbol=s"
+        self.STOCK_OC_URL = "https://www.nseindia.com/api/option-chain-equities?symbol="
 
     def get_option_chain_url(self,symbol,expiry_date=None,dayfirst=False):
         try:
@@ -61,8 +61,15 @@ class NseUrls:
                 return self.__OPTION_CHAIN_BASE_URL + symbol
         except Exception as err:
             raise Exception("Error occurred while getting OC url, Error: ",str(err))
-    
-    def get_optionchain_url(self,symbol,)
+
+    def get_oc_url(self,symbol):
+        if symbol:
+            if is_ind_index(symbol):
+                return self.INDEX_OC_URL + symbol
+            else:
+                return self.STOCK_OC_URL + symbol
+
+
     def get_participant_oi_url(self,date,dayfirst=False):
         try:
             date = get_formated_date(date,format=self.nse_date_formats["part_oi"],dayfirst=dayfirst)
