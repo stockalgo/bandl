@@ -15,7 +15,7 @@ pip install bandl
 
 ### To import NSE Data Module
 ```python
-from bandl.nse_data import NseData()
+from bandl.nse_data import NseData
 nd = NseData() # returns 'NseData object'. can be use to get nse data.
 ```
 #### To get Option chain data from New NSE website
