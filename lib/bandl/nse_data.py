@@ -126,7 +126,7 @@ class NseData:
             raise Exception("something went wrong while fetching nse :", str(err))
 
     def get_option_data(self,symbol,expiry_date=None,strikes=None):
-        """[summary]
+        """get option data
 
         :param symbol: stock/index symbol
         :type symbol: string
@@ -135,14 +135,15 @@ class NseData:
         :param strikes: Dictionary having OTM,ITM,ATM strikes, defaults to None
         :type strikes: Dictionary, optional
         :raises Exception: Connection related
-        :return: option data
-        :rtype: dictionary
+        :return: underlying_val, option data
+        :rtype: pair
         """
         try:
             hack = self.__request.get(self.__nse_urls.OC_FIRST_TRY,headers=self.__headers)
             base_oc_url = self.__nse_urls.get_oc_url(symbol)
             page = self.__request.get(base_oc_url,headers=self.__headers)
             oc_json = json.loads(page.text)
+            underlying_val = oc_json['records']['underlyingValue']
             if not expiry_date:
                 oc_data = oc_json['filtered']['data']
                 oc_mapped_data = {}
@@ -155,7 +156,7 @@ class NseData:
                             oc_mapped_data[strikePrice] = {"CE":eachData.get("CE"),"PE":eachData.get("PE")}
                     else:
                         oc_mapped_data[strikePrice] = {"CE":eachData.get("CE"),"PE":eachData.get("PE")}
-                return oc_mapped_data
+                return underlying_val,oc_mapped_data
         except Exception as err:
             raise Exception("something went wrong while fetching nse :", str(err))
 
