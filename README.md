@@ -4,7 +4,7 @@ bandl is open source library, provides apis for equity stock, derivatives, commo
 
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install stolgo.
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install bandl.
 
 ```bash
 pip install bandl
