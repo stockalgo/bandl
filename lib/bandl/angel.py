@@ -48,4 +48,5 @@ class Angel:
         res = self.__request.post(self.urls.get_url("login"),
                             data=json.dumps(request_body),
                             headers = self.urls.LOGIN_HEADERS)
-        self.login_res = json.loads(res.text)
+        self.__login_res = json.loads(res.text)
+        self.__feed_token = self.__login_res.get("data").get("feedToken",None)
