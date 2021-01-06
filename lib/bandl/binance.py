@@ -1,4 +1,6 @@
 import json
+import pandas as pd
+import datetime
 
 from bandl.request import RequestUrl
 from bandl.helper import get_date_range
@@ -14,6 +16,9 @@ class BinanceUrl:
         self.HEADER =   {
                         'Content-Type': 'application/json',
                         }
+        self.data_columns = ["OpenTime","Open","High","Low","Close","Volume","CloseTime",\
+                            "QuoteAssetVolume","NumberOfTrades","TakerBuyBaseAssetVolume",\
+                            "TakerBuyQuoteAssetVolume","Ignore"]
 
     def get_candle_data_url(self,symbol,start,end,interval):
         return self.DATA_URL + symbol + "&startTime="+ start + "&endTime=" + end + "&interval=" + interval
@@ -40,7 +45,10 @@ class Binance:
 
             data_url = self.urls.get_candle_data_url(symbol,start=s_from_milli_sec,end=e_till_milli_sec,interval=interval)
             res = self.__request.get(data_url,headers=self.urls.HEADER)
-            dfs = json.loads(res.text)
+            data = json.loads(res.text)
+            dfs = pd.DataFrame(data,columns=self.urls.data_columns)
+            dfs['OpenTime'] = pd.to_datetime(dfs['OpenTime'], unit='ms')
+            dfs['CloseTime'] = pd.to_datetime(dfs['CloseTime'], unit='ms')
             return dfs
 
         except Exception as err:
