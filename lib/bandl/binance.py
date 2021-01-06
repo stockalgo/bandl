@@ -25,7 +25,7 @@ class BinanceUrl:
 
 
 class Binance:
-    def __init__(self,api_key, api_secret,timeout=DEFAULT_TIMEOUT,max_retries=MAX_RETRIES):
+    def __init__(self,api_key=None, api_secret=None,timeout=DEFAULT_TIMEOUT,max_retries=MAX_RETRIES):
         #internal initialization
         self.__request = RequestUrl(timeout,max_retries)
         self.urls = BinanceUrl()
