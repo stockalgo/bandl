@@ -31,6 +31,25 @@ class Binance:
         self.urls = BinanceUrl()
 
     def get_data(self,symbol,start=None,end=None,periods=None,interval="1D",dayfirst=False):
+        """Binance getData API for intraday/Historical data
+
+        :param symbol: crypto symbol
+        :type symbol: string
+        :param start: start time, defaults to None
+        :type start: string optional
+        :param end: end time, defaults to None
+        :type end: string, optional
+        :param periods: No of days, defaults to None
+        :type periods: integer, optional
+        :param interval: timeframe, defaults to "1D"
+        :type interval: string, optional
+        :param dayfirst: if date in european style, defaults to False
+        :type dayfirst: bool, optional
+        :raises ValueError: invalid time
+        :raises Exception: for execption
+        :return: data requested
+        :rtype: pandas.DataFrame
+        """
         try:
             s_from,e_till = get_date_range(start=start,end=end,periods=periods,dayfirst=dayfirst)
             if s_from > e_till:
