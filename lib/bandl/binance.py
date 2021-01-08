@@ -11,8 +11,8 @@ MAX_RETRIES = 2
 
 class BinanceUrl:
     def __init__(self):
-        self.BASE_URL = "https://api.binance.com"
-        self.DATA_URL = "https://api.binance.com/api/v3/klines?symbol="
+        self.BASE_URL = "https://api.binance.com/"
+        self.BACKUP_URL = "https://api3.binance.com/"
         self.HEADER =   {
                         'Content-Type': 'application/json',
                         }
@@ -20,8 +20,11 @@ class BinanceUrl:
                             "QuoteAssetVolume","NumberOfTrades","TakerBuyBaseAssetVolume",\
                             "TakerBuyQuoteAssetVolume","Ignore"]
 
-    def get_candle_data_url(self,symbol,start,end,interval):
-        return self.DATA_URL + symbol + "&startTime="+ start + "&endTime=" + end + "&interval=" + interval
+    def get_candle_data_url(self,symbol,start,end,interval,use_backup=False):
+        url = self.BASE_URL
+        if use_backup:
+            url = self.BACKUP_URL
+        return url + "api/v3/klines?symbol="+ symbol + "&startTime="+ start + "&endTime=" + end + "&interval=" + interval
 
 
 class Binance:
@@ -63,7 +66,12 @@ class Binance:
             e_till_milli_sec = str(int(e_till.timestamp() * 1000))
 
             data_url = self.urls.get_candle_data_url(symbol,start=s_from_milli_sec,end=e_till_milli_sec,interval=interval)
-            res = self.__request.get(data_url,headers=self.urls.HEADER)
+            try:
+                res = self.__request.get(data_url,headers=self.urls.HEADER)
+            except:
+                data_url = self.urls.get_candle_data_url(symbol,start=s_from_milli_sec,end=e_till_milli_sec,interval=interval,use_backup=True)
+                res = self.__request.get(data_url,headers=self.urls.HEADER)
+
             data = json.loads(res.text)
             dfs = pd.DataFrame(data,columns=self.urls.data_columns)
             dfs['OpenTime'] = pd.to_datetime(dfs['OpenTime'], unit='ms')
