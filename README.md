@@ -1,4 +1,4 @@
-<p align="center"><a href="http://bandl.io" ><img src="https://raw.githubusercontent.com/stockalgo/bandl/master/logo.svg"></a> </p>
+<p align="center"><a href="http://bandl.io" target="_blank"><img src="https://raw.githubusercontent.com/stockalgo/bandl/master/logo.svg"></a> </p>
 
 bandl is open source library, provides apis for equity stock, derivatives, commodities, and cryptocurrencies.
 
