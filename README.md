@@ -1,4 +1,4 @@
-<p align="center"> <img src="https://raw.githubusercontent.com/stockalgo/bandl/master/logo.svg"> </p>
+<p align="center"><a href="http://bandl.io" ><img src="https://raw.githubusercontent.com/stockalgo/bandl/master/logo.svg"></a> </p>
 
 bandl is open source library, provides apis for equity stock, derivatives, commodities, and cryptocurrencies.
 
@@ -9,6 +9,22 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install bandl.
 ```bash
 pip install bandl
 ```
+
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
+
+- [Installation](#installation)
+- [Usage](#usage)
+  - [To import NSE Data Module](#to-import-nse-data-module)
+    - [To get Option chain data from New NSE website](#to-get-option-chain-data-from-new-nse-website)
+    - [To get Option chain data](#to-get-option-chain-data)
+    - [To get stock historical data.](#to-get-stock-historical-data)
+    - [To get FII/DII data.](#to-get-fiidii-data)
+- [Contributing](#contributing)
+- [License](#license)
+
+<!-- /code_chunk_output -->
 
 
 ## Usage
