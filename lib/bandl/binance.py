@@ -76,6 +76,8 @@ class Binance:
             dfs = pd.DataFrame(data,columns=self.urls.data_columns)
             dfs['OpenTime'] = pd.to_datetime(dfs['OpenTime'], unit='ms')
             dfs['CloseTime'] = pd.to_datetime(dfs['CloseTime'], unit='ms')
+            dfs.set_index("OpenTime",inplace=True)
+
             return dfs
 
         except Exception as err:
