@@ -19,6 +19,7 @@ class BinanceUrl:
         self.data_columns = ["OpenTime","Open","High","Low","Close","Volume","CloseTime",\
                             "QuoteAssetVolume","NumberOfTrades","TakerBuyBaseAssetVolume",\
                             "TakerBuyQuoteAssetVolume","Ignore"]
+        self.TICKER_URL= "https://www.binance.com/api/v1/ticker/allPrices"
 
     def get_candle_data_url(self,symbol,start,end,interval,use_backup=False):
         url = self.BASE_URL
@@ -32,6 +33,26 @@ class Binance:
         #internal initialization
         self.__request = RequestUrl(timeout,max_retries)
         self.urls = BinanceUrl()
+
+    def get_tickers(self,keyword="None"):
+        """Get all crypto tickers from binance
+
+        :param keyword: Any keyword to match, for ex. "BTC" will return all BTC pair, defaults to "None"
+        :type keyword: str, optional
+        :raises Exception: related to network/API
+        :return: list of all tickers form binance
+        :rtype: list
+        """
+        try:
+            res = self.__request.get(self.urls.TICKER_URL,headers=self.urls.HEADER)
+            tickers = json.loads(res.text)
+            all_tickers = [each_symbol.get("symbol") for each_symbol in tickers]
+            if keyword:
+                keyword = keyword.upper()
+                all_tickers = [symbol for symbol in all_tickers if keyword in symbol]
+            return all_tickers
+        except Exception as err:
+            raise Exception("Error occurred while getting tickers :", str(err))
 
     def get_data(self,symbol,start=None,end=None,periods=None,interval="1D",dayfirst=False):
         """Binance getData API for intraday/Historical data
