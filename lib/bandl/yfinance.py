@@ -5,7 +5,6 @@ import time
 
 from bandl.helper import get_formated_date,get_date_range,is_ind_index
 from bandl.request import RequestUrl
-from bandl.candlestick import CandleStick
 #default params for url connection
 DEFAULT_TIMEOUT = 5 # seconds
 MAX_RETRIES = 3
