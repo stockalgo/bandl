@@ -49,7 +49,7 @@ class NseUrls:
         self.OC_FIRST_TRY = "https://www.nseindia.com/option-chain"
         self.INDEX_OC_URL = "https://www.nseindia.com/api/option-chain-indices?symbol="
         self.STOCK_OC_URL = "https://www.nseindia.com/api/option-chain-equities?symbol="
-
+        self.BASE_URL = "https://www.nseindia.com"
     def get_option_chain_url(self,symbol,expiry_date=None,dayfirst=False):
         try:
             if expiry_date:

@@ -471,6 +471,8 @@ class NseData:
                 data_limit = STOCK_DATA_LIMIT
 
             data_days = e_till - s_from
+
+            hack = self.__request.get(self.__nse_urls.BASE_URL,headers=self.__headers)
             if (data_days.days) > data_limit:
                 date_ranges = self.__get_datarange_intv(s_from,e_till,data_limit)
                 workers = len(date_ranges)
