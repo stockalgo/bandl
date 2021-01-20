@@ -4,10 +4,50 @@ bandl package
 Submodules
 ----------
 
+bandl.5paisa module
+-------------------
+
+.. automodule:: bandl.5paisa
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+bandl.angel module
+------------------
+
+.. automodule:: bandl.angel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+bandl.binance module
+--------------------
+
+.. automodule:: bandl.binance
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+bandl.coinbase module
+---------------------
+
+.. automodule:: bandl.coinbase
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 bandl.common module
 -------------------
 
 .. automodule:: bandl.common
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+bandl.exception module
+----------------------
+
+.. automodule:: bandl.exception
    :members:
    :undoc-members:
    :show-inheritance:
@@ -56,6 +96,14 @@ bandl.samco module
 ------------------
 
 .. automodule:: bandl.samco
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+bandl.yfinance module
+---------------------
+
+.. automodule:: bandl.yfinance
    :members:
    :undoc-members:
    :show-inheritance:
