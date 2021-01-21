@@ -22,6 +22,10 @@ pip install bandl
     - [To get Option chain data](#to-get-option-chain-data)
     - [To get stock historical data.](#to-get-stock-historical-data)
     - [To get FII/DII data.](#to-get-fiidii-data)
+   - [To get Stock data from Nasdaq](#to-get-stock-data-from-nasdaq)
+   - [To get Stock data from Yahoo Finance](#to-get-stock-data-from-yahoo-finance)
+   - [To get Crypto Currencies data from Binance](#to-get-crypto-currencies-data-from-binance)
+   - [To get Crypto Currencies data from Coinbase](#to-get-crypto-currencies-data-from-coinbase)
 - [Contributing](#contributing)
 - [License](#license)
 
