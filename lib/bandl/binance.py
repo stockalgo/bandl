@@ -34,7 +34,7 @@ class Binance:
         self.__request = RequestUrl(timeout,max_retries)
         self.urls = BinanceUrl()
 
-    def get_tickers(self,keyword="None"):
+    def get_tickers(self,keyword=None):
         """Get all crypto tickers from binance
 
         :param keyword: Any keyword to match, for ex. "BTC" will return all BTC pair, defaults to "None"
