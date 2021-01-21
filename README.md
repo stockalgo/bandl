@@ -1,3 +1,4 @@
+
 <p align="center"><a href="http://bandl.io" target="_blank"><img src="https://raw.githubusercontent.com/stockalgo/bandl/master/logo.svg"></a> </p>
 
 bandl is open source library, provides apis for equity stock, derivatives, commodities, and cryptocurrencies.
@@ -29,7 +30,7 @@ pip install bandl
 
 ## Usage
 
-### To import NSE Data Module
+### To Get Stock/Option Data form NSE
 ```python
 from bandl.nse_data import NseData
 nd = NseData() # returns 'NseData object'. can be use to get nse data.
@@ -40,7 +41,7 @@ strikes = nd.get_oc_strike_prices("NIFTY")
 oc_data = nd.get_option_data("NIFTY",strikes=strikes)
 ```
 
-#### To get Option chain data
+#### To get Option chain data from old website
 ```python
 expiry_dates = nd.get_oc_exp_dates(symbol) #return available expiry dates
 nd.get_option_chain_excel(symbol,expiry_date,filepath) #dumps option chain to file_path
@@ -55,6 +56,35 @@ data_frame = nd.get_data(symbol,series="EQ",start=None,end=None,periods=None,day
 #### To get FII/DII data.
 ```python
 part_oi_df = nd.get_part_oi_df(start=None,end=None,periods=None,dayfirst=False,workers=None)
+```
+### To get Stock data from Nasdaq
+```python
+from bandl.nasdaq import Nasdaq
+testObj = Nasdaq() # returns 'Nasdaq class object'.
+dfs = testObj.get_data("AAPL",periods=15) # returns last 15 days data
+```
+### To get Stock data from Yahoo Finance
+```python
+from bandl.yfinance import Yfinance
+testObj = Yfinance() # returns 'Yfinance class object'.
+#if US stock, then pass is_indian=False
+dfs = testObj.get_data("AAPL",is_indian=False) #by default, returns last years data
+#to get indian stock data
+dfs = testObj.get_data("SBIN",start="21-Jan-2020") #retruns data from 21Jan 2020 to till today
+```
+### To get Crypto Currencies data from Binance
+```python
+from bandl.binance import Binance
+testObj = Binance() # returns 'Binance class object'.
+#to get all crypto tickers
+tkrs = testObj.get_tickers() #by default, returns all tickers
+dfs = testObj.get_data("ETHBTC",start="21-Jan-2020") #retruns data from 21Jan 2020 to till today
+```
+### To get Crypto Currencies data from Coinbase
+```python
+from bandl.coinbase import Coinbase
+testObj = Coinbase() # returns 'Binance class object'.
+dfs = testObj.get_data("BTC-USD",start="21-Jan-2020",end="21-Jan-2021")#retruns data from 21Jan 2020 to 21-Jan-2021
 ```
 
 ## Contributing
