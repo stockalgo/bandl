@@ -39,7 +39,7 @@ setup(
       'Programming Language :: Python :: 3.7',
       'Programming Language :: Python :: 3.8',
         ],
-    download_url = "https://github.com/stockalgo/stolgoarchive/v0.0.1.tar.gz",
+    download_url = "https://github.com/stockalgo/bandl/archive/v0.1.0.tar.gz",
     keywords = ["python","yahoo-finance-api","coinbase-api","nse","binance-api","coinbase-pro",\
                 "5paisa","nasdaq-crawler","yfinance","5paisa-trading-apis","nasdaq-python-api",\
                 "yfinance-api","nasqad","samco","nse-python-api","optionchain","angelbroking-apis",\
