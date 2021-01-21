@@ -33,7 +33,7 @@ class AngelUrl:
     def get_url(self,type):
         return self._BASE_URL + self.routes.get(type,None)
 
-class Angel:
+class AngelBroking:
     def __init__(self,user_id,password,api_key,timeout=DEFAULT_TIMEOUT,max_retries=MAX_RETRIES):
         #internal initialization
         self.__request = RequestUrl(timeout,max_retries)
