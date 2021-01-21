@@ -5,7 +5,7 @@ with open("README.md", 'r') as f:
 
 setup(
    name='bandl',
-   version='0.0.1',
+   version='0.1.0',
    description='Utilities for the analysis of financial data',
    license="MIT",
    long_description=README,
@@ -13,9 +13,9 @@ setup(
    author='stolgo Developers',
    author_email='stockalgos@gmail.com',
    project_urls={
-          "Organization":"http://www.stolgo.com",
-          "Source":"https://github.com/chiranjeevg/bandl/",
-          "Tracker":"https://github.com/chiranjeevg/bandl/issues"
+          "Organization":"http://www.bandl.io",
+          "Source":"https://github.com/stockalgo/bandl",
+          "Tracker":"https://github.com/stockalgo/bandl/issues"
           },
    packages=find_packages('lib'),
    package_dir = {'':'lib'},
@@ -39,6 +39,9 @@ setup(
       'Programming Language :: Python :: 3.7',
       'Programming Language :: Python :: 3.8',
         ],
-    download_url = "https://github.com/chiranjeevg/bandl/archive/v0.0.1.tar.gz",
-    keywords = ['data', 'NSE', 'STOCK','FINANCE',"DERIVATIVE","API"]
+    download_url = "https://github.com/stockalgo/stolgoarchive/v0.0.1.tar.gz",
+    keywords = ["python","yahoo-finance-api","coinbase-api","nse","binance-api","coinbase-pro",\
+                "5paisa","nasdaq-crawler","yfinance","5paisa-trading-apis","nasdaq-python-api",\
+                "yfinance-api","nasqad","samco","nse-python-api","optionchain","angelbroking-apis",\
+                  "binance-python-api","coinbase-python-api","samco-python-api"]
 )
