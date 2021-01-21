@@ -4,18 +4,10 @@ bandl package
 Submodules
 ----------
 
-bandl.5paisa module
--------------------
+bandl.angel\_broking module
+---------------------------
 
-.. automodule:: bandl.5paisa
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-bandl.angel module
-------------------
-
-.. automodule:: bandl.angel
+.. automodule:: bandl.angel_broking
    :members:
    :undoc-members:
    :show-inheritance:
@@ -36,26 +28,10 @@ bandl.coinbase module
    :undoc-members:
    :show-inheritance:
 
-bandl.common module
--------------------
+bandl.five\_paisa module
+------------------------
 
-.. automodule:: bandl.common
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-bandl.exception module
-----------------------
-
-.. automodule:: bandl.exception
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-bandl.helper module
--------------------
-
-.. automodule:: bandl.helper
+.. automodule:: bandl.five_paisa
    :members:
    :undoc-members:
    :show-inheritance:
@@ -76,22 +52,6 @@ bandl.nse\_data module
    :undoc-members:
    :show-inheritance:
 
-bandl.nse\_urls module
-----------------------
-
-.. automodule:: bandl.nse_urls
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-bandl.request module
---------------------
-
-.. automodule:: bandl.request
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 bandl.samco module
 ------------------
 
@@ -104,15 +64,6 @@ bandl.yfinance module
 ---------------------
 
 .. automodule:: bandl.yfinance
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: bandl
    :members:
    :undoc-members:
    :show-inheritance:
