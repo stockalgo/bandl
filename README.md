@@ -95,6 +95,12 @@ testObj = Coinbase() # returns 'Binance class object'.
 dfs = testObj.get_data("BTC-USD",start="21-Jan-2020",end="21-Jan-2021")#retruns data from 21Jan 2020 to 21-Jan-2021
 ```
 
+### Todo
+- Add streaming data support
+- Support for fundamental data
+- Write unit tests
+- Add more brokers
+
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
