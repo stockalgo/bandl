@@ -91,7 +91,7 @@ dfs = testObj.get_data("ETHBTC",start="21-Jan-2020") #retruns data from 21Jan 20
 ### To get Crypto Currencies data from Coinbase
 ```python
 from bandl.coinbase import Coinbase
-testObj = Coinbase() # returns 'Binance class object'.
+testObj = Coinbase() # returns 'Coinbase class object'.
 dfs = testObj.get_data("BTC-USD",start="21-Jan-2020",end="21-Jan-2021")#retruns data from 21Jan 2020 to 21-Jan-2021
 ```
 
