@@ -45,6 +45,12 @@ python -m build
 twine check dist/*
 ```
 
+## Releasing to PyPI
+
+Maintainers use **Trusted Publishing** (no PyPI token in GitHub). After one-time setup, publishing runs when you push a **version tag** `vMAJOR.MINOR.PATCH` (e.g. `v0.2.0`) that matches the **`version`** field in `pyproject.toml`.
+
+See **[docs/PYPI_TRUSTED_PUBLISHING.md](docs/PYPI_TRUSTED_PUBLISHING.md)** for the full checklist (GitHub `pypi` environment, PyPI pending publisher, first tag).
+
 ## Pull requests
 
 - Open PRs against the default branch (`master` unless the maintainers rename it).
