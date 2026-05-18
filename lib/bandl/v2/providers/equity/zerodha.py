@@ -17,6 +17,11 @@ from bandl.v2.models.types import AssetType, Interval
 
 KITE_API = "https://api.kite.trade"
 
+# Kite public instruments CSV paths; reject odd tokens to avoid path injection.
+KITE_EXCHANGES: frozenset[str] = frozenset(
+    {"NSE", "BSE", "MCX", "NFO", "CDS", "BFO", "BCD"},
+)
+
 KITE_INTERVAL: dict[Interval, str] = {
     Interval.M1: "minute",
     Interval.M3: "3minute",
@@ -64,6 +69,17 @@ def _ensure_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
+def _normalize_kite_exchange(exchange: str) -> str:
+    ex = exchange.upper().strip()
+    if ex not in KITE_EXCHANGES:
+        allowed = ", ".join(sorted(KITE_EXCHANGES))
+        raise ProviderError(
+            "zerodha",
+            f"Unsupported exchange {exchange!r}; expected one of: {allowed}",
+        )
+    return ex
+
+
 class ZerodhaProvider:
     provider_id = "zerodha"
 
@@ -87,7 +103,7 @@ class ZerodhaProvider:
         }
 
     def load_instruments(self, exchange: str = "NSE", *, force: bool = False) -> None:
-        ex = exchange.upper()
+        ex = _normalize_kite_exchange(exchange)
         if not force and ex in self._instrument_cache:
             return
         text = self._http.get_text(
@@ -140,7 +156,13 @@ class ZerodhaProvider:
             raise SymbolNotFoundError(
                 f"No {exchange} instrument for {tradingsymbol} (type filter {want_types})",
             )
-        return int(matches[0]["instrument_token"])
+        try:
+            return int(matches[0]["instrument_token"])
+        except (KeyError, TypeError, ValueError) as err:
+            raise ProviderError(
+                self.provider_id,
+                f"Invalid instrument_token in instruments dump for {tradingsymbol}",
+            ) from err
 
     def get_ohlcv(
         self,
@@ -155,7 +177,7 @@ class ZerodhaProvider:
         asset_type: AssetType | None = None,
     ) -> list[OHLCV]:
         rs = resolve_symbol(symbol, asset_type=asset_type)
-        ex = (exchange or "NSE").upper()
+        ex = _normalize_kite_exchange(exchange or "NSE")
         ts = self._pick_tradingsymbol(rs, tradingsymbol=tradingsymbol)
         token = instrument_token
         if token is None:
@@ -211,7 +233,7 @@ class ZerodhaProvider:
         limit: int | None = None,
         instrument_types: tuple[str, ...] = ("EQ", "INDEX"),
     ) -> list[SymbolInfo]:
-        ex = exchange.upper()
+        ex = _normalize_kite_exchange(exchange)
         self.load_instruments(ex)
         out: list[SymbolInfo] = []
         for r in self._instrument_cache[ex]:

@@ -67,6 +67,16 @@ def _pair_to_canonical(pair: str) -> str:
     return f"{base}{quote}"
 
 
+def _candle_time_ms(candle: dict[str, Any], *, provider_id: str) -> int:
+    try:
+        return int(candle["time"])
+    except (KeyError, TypeError, ValueError) as err:
+        raise ProviderError(
+            provider_id,
+            "Invalid candle payload: missing or non-numeric 'time'",
+        ) from err
+
+
 class CoinDCXProvider:
     provider_id = "coindcx"
 
@@ -121,9 +131,10 @@ class CoinDCXProvider:
             normalized = [c for c in chunk if isinstance(c, dict)]
             if not normalized:
                 break
-            times = [int(c["time"]) for c in normalized]
+            times: list[int] = []
             for c in normalized:
-                t = int(c["time"])
+                t = _candle_time_ms(c, provider_id=self.provider_id)
+                times.append(t)
                 if start_ms <= t <= end_ms and t not in seen:
                     seen.add(t)
                     rows.append(c)
@@ -136,8 +147,8 @@ class CoinDCXProvider:
 
         interval_label: str = interval.value if isinstance(interval, Interval) else str(interval)
         out: list[OHLCV] = []
-        for item in sorted(rows, key=lambda x: int(x["time"])):
-            t = int(item["time"])
+        for item in sorted(rows, key=lambda x: _candle_time_ms(x, provider_id=self.provider_id)):
+            t = _candle_time_ms(item, provider_id=self.provider_id)
             ts = datetime.fromtimestamp(t / 1000, tz=timezone.utc)
             out.append(
                 OHLCV(

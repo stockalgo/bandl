@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProviderSettings(BaseModel):
     """Per-provider options (keys, timeouts, overrides)."""
 
-    api_key: str | None = None
-    api_secret: str | None = None
-    access_token: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    api_key: str | None = Field(default=None, repr=False)
+    api_secret: str | None = Field(default=None, repr=False)
+    access_token: str | None = Field(default=None, repr=False)
     base_url: str | None = None
-    model_config = {"extra": "allow"}
 
 
 class BandlConfig(BaseModel):

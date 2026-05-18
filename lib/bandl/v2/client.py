@@ -11,7 +11,7 @@ import pandas as pd
 from bandl.v2.config import BandlConfig, ProviderSettings
 from bandl.v2.core.registry import ProviderRegistry
 from bandl.v2.core.resolver import ResolvedSymbol, resolve_symbol
-from bandl.v2.exceptions import BandlError
+from bandl.v2.exceptions import BandlError, ConfigurationError
 from bandl.v2.models import OHLCV, SymbolInfo
 from bandl.v2.models.types import AssetType, Interval
 from bandl.v2.providers.crypto.binance import BinanceProvider
@@ -124,7 +124,10 @@ class Bandl:
         return self._config.default_equity_provider
 
     def _get_provider(self, source: str) -> Any:
-        return self._registry.get(source)
+        try:
+            return self._registry.get(source)
+        except KeyError as err:
+            raise ConfigurationError(f"Unknown provider '{source}'") from err
 
     def get_ohlcv(
         self,

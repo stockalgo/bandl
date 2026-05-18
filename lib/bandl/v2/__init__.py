@@ -5,6 +5,7 @@ from bandl.v2.config import BandlConfig, ProviderSettings
 from bandl.v2.exceptions import (
     AuthenticationError,
     BandlError,
+    ConfigurationError,
     DataNotAvailableError,
     ProviderError,
     RateLimitError,
@@ -25,4 +26,5 @@ __all__ = [
     "AuthenticationError",
     "RateLimitError",
     "DataNotAvailableError",
+    "ConfigurationError",
 ]

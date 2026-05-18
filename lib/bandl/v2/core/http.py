@@ -2,13 +2,31 @@
 
 from __future__ import annotations
 
+import random
+import time
 from collections.abc import Mapping
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 import httpx
 
 from bandl.v2.config import BandlConfig
 from bandl.v2.exceptions import AuthenticationError, ProviderError
+
+
+def _safe_url_for_errors(url: Any) -> str:
+    """Strip query string and fragment so error messages do not leak sensitive params."""
+    try:
+        p = urlparse(str(url))
+        return urlunparse((p.scheme, p.netloc, p.path, "", "", ""))
+    except Exception:
+        return "<url>"
+
+
+def _sleep_backoff(attempt: int) -> None:
+    """Exponential backoff with jitter before the next HTTP retry."""
+    delay = min(8.0, 0.5 * (2**attempt)) + random.uniform(0, 0.15)
+    time.sleep(delay)
 
 
 def _provider_http_error(provider: str, exc: httpx.HTTPStatusError) -> ProviderError:
@@ -17,7 +35,8 @@ def _provider_http_error(provider: str, exc: httpx.HTTPStatusError) -> ProviderE
     detail = exc.response.text.strip()
     if len(detail) > 1500:
         detail = f"{detail[:1500]}..."
-    msg = f"HTTP {code} for {exc.request.url}"
+    safe_url = _safe_url_for_errors(exc.request.url)
+    msg = f"HTTP {code} for {safe_url}"
     if detail:
         msg = f"{msg}: {detail}"
     if exc.response.status_code in (401, 403):
@@ -59,11 +78,15 @@ class HttpClient:
                 if 400 <= e.response.status_code < 500:
                     raise _provider_http_error(provider, e) from e
                 last_exc = e
-                if attempt >= self._config.max_http_retries:
+                if attempt < self._config.max_http_retries:
+                    _sleep_backoff(attempt)
+                else:
                     break
             except httpx.RequestError as e:
                 last_exc = e
-                if attempt >= self._config.max_http_retries:
+                if attempt < self._config.max_http_retries:
+                    _sleep_backoff(attempt)
+                else:
                     break
         if isinstance(last_exc, httpx.HTTPStatusError):
             raise _provider_http_error(provider, last_exc) from last_exc
@@ -89,11 +112,15 @@ class HttpClient:
                 if 400 <= e.response.status_code < 500:
                     raise _provider_http_error(provider, e) from e
                 last_exc = e
-                if attempt >= self._config.max_http_retries:
+                if attempt < self._config.max_http_retries:
+                    _sleep_backoff(attempt)
+                else:
                     break
             except httpx.RequestError as e:
                 last_exc = e
-                if attempt >= self._config.max_http_retries:
+                if attempt < self._config.max_http_retries:
+                    _sleep_backoff(attempt)
+                else:
                     break
         if isinstance(last_exc, httpx.HTTPStatusError):
             raise _provider_http_error(provider, last_exc) from last_exc

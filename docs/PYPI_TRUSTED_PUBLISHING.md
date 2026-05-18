@@ -8,7 +8,7 @@ This repository publishes **bandl** to [PyPI](https://pypi.org/project/bandl/) u
 |------|------|
 | [.github/workflows/publish.yml](../.github/workflows/publish.yml) | Push of a tag matching `v*.*.*` (e.g. `v0.2.0`), or manual **Run workflow** |
 
-The job builds with `python -m build` and uploads with [`pypa/gh-action-pypi-publish`](https://github.com/pypa/gh-action-pypi-publish).
+The job builds with `python -m build` and uploads with [`pypa/gh-action-pypi-publish`](https://github.com/pypa/gh-action-pypi-publish), **pinned to a full git SHA** in the workflow file (supply-chain hygiene). For **tag** pushes, a step asserts that `vX.Y.Z` matches `project.version` in `pyproject.toml` before building.
 
 ## Your checklist (one-time setup)
 
