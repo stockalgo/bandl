@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+examples/.env
+dist/
+build/
+*.egg-info/
+.DS_Store

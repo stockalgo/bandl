@@ -102,11 +102,9 @@ dfs = testObj.get_data("BTC-USD",start="21-Jan-2020",end="21-Jan-2021")#retruns 
 - Add more brokers
 
 ## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-Kindly follow PEP 8 Coding Style guidelines. Refer: https://www.python.org/dev/peps/pep-0008/
-
-Please make sure to update tests as appropriate.
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, tests, Ruff, and pull request expectations.  
+Legacy note: PEP 8 remains the baseline; V2 code is also checked with **Ruff** in CI.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
