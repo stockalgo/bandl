@@ -29,8 +29,7 @@ class HistoricalOHLCVProvider(Protocol):
         *,
         search: str | None = None,
         limit: int | None = None,
-    ) -> list[Any]:
-        ...
+    ) -> list[Any]: ...
 
 
 class BaseHistoricalProvider(ABC):

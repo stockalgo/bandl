@@ -130,7 +130,11 @@ def resolve_symbol(
     work = raw.strip()
     upper = work.upper()
 
-    if asset_type in (AssetType.CRYPTO_SPOT, AssetType.CRYPTO_PERP, AssetType.CRYPTO_FUTURE):
+    if asset_type in (
+        AssetType.CRYPTO_SPOT,
+        AssetType.CRYPTO_PERP,
+        AssetType.CRYPTO_FUTURE,
+    ):
         canon = normalize_crypto_symbol(work)
         base, quote = _split_crypto_pair(canon)
         return ResolvedSymbol(

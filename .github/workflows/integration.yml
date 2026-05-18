@@ -1,0 +1,31 @@
+# Live HTTP checks against Binance / CoinDCX public APIs.
+# Does not run on every PR to avoid flakes and rate limits for contributors.
+
+name: Integration
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 7 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  live-apis:
+    name: Live provider smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package + dev deps
+        run: pip install -e ".[dev]"
+
+      - name: Run integration tests
+        run: pytest tests/v2/ -m integration --override-ini="addopts="

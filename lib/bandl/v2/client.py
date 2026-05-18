@@ -99,7 +99,11 @@ class _Facet:
 
 
 class Bandl:
-    """Entry point for historical OHLCV: ``get_ohlcv`` (models) or ``get_ohlcv_dataframe`` (pandas)."""
+    """Entry point for historical OHLCV.
+
+    Use ``get_ohlcv`` for ``list[OHLCV]`` or ``get_ohlcv_dataframe`` for a pandas
+    ``DataFrame``.
+    """
 
     def __init__(self, config: BandlConfig | None = None) -> None:
         self._config = config or BandlConfig()

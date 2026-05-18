@@ -65,4 +65,3 @@ def test_zerodha_historical_with_mock_token() -> None:
     assert len(rows) == 1
     assert rows[0].symbol == "RELIANCE"
     assert rows[0].source == "zerodha"
-

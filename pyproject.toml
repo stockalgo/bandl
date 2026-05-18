@@ -39,6 +39,7 @@ dev = [
     "pytest-cov>=4,<6",
     "build>=1.2,<2",
     "twine>=5,<7",
+    "ruff>=0.9,<1",
 ]
 
 [project.urls]
@@ -56,3 +57,17 @@ addopts = "-m 'not integration'"
 markers = [
     "integration: network or credential-dependent tests",
 ]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["SIM108"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["bandl"]
+
+[tool.ruff.format]
+quote-style = "double"

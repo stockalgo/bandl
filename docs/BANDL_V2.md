@@ -14,7 +14,7 @@
 4. **Zerodha** — Historical API requires `api_key` and `access_token`. Instrument token is resolved by downloading the public NSE instruments CSV from Kite, except when the caller passes `instrument_token=`. Known index tradingsymbols (`NIFTY 50`, `NIFTY BANK`) are mapped from canonical index names.
 5. **Kite intervals** — Several normalized `Interval` values (`H2`, `H4`, `W1`, `MO1`) currently map to the closest supported Kite interval (`60minute` or `day`). Refine when sub-day precision matters.
 6. **CoinDCX** — The public `market_data/candles` API returns `[]` when both `startTime` and `endTime` are set. The adapter paginates with `endTime` + `limit` and filters to the requested window client-side.
-7. **Tests** — Default `pytest` excludes `@pytest.mark.integration` (see `addopts` in `pyproject.toml`). Run network smoke tests with `pytest -m integration`.
+7. **Tests** — Default `pytest` excludes `@pytest.mark.integration` (see `addopts` in `pyproject.toml`). Run network smoke tests with `pytest tests/v2/ -m integration --override-ini="addopts="` (see [CONTRIBUTING.md](../CONTRIBUTING.md)). **CI** (`.github/workflows/ci.yml`) runs unit tests, Ruff, and `build`/`twine check` on pushes and PRs; optional live API smoke tests run weekly or on demand via `integration.yml`.
 
 ## Examples and `.env`
 

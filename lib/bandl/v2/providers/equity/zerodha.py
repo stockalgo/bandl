@@ -7,6 +7,7 @@ import io
 import re
 from datetime import datetime, timezone
 from decimal import Decimal
+
 from bandl.v2.config import BandlConfig, ProviderSettings
 from bandl.v2.core.http import HttpClient
 from bandl.v2.core.resolver import ResolvedSymbol, resolve_symbol

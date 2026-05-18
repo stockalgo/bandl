@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from bandl.v2.core.resolver import normalize_crypto_symbol, normalize_equity_or_index_symbol, resolve_symbol
+from bandl.v2.core.resolver import (
+    normalize_crypto_symbol,
+    normalize_equity_or_index_symbol,
+    resolve_symbol,
+)
 from bandl.v2.models.types import AssetType
 
 

@@ -17,8 +17,22 @@ def test_coindcx_get_ohlcv_desc_sorted() -> None:
     t_hi = int(end.timestamp() * 1000) - 86_400_000
     t_lo = t_hi - 86_400_000
     sample = [
-        {"open": "2", "high": "2", "low": "2", "close": "2", "volume": "1", "time": t_hi},
-        {"open": "1", "high": "1", "low": "1", "close": "1", "volume": "1", "time": t_lo},
+        {
+            "open": "2",
+            "high": "2",
+            "low": "2",
+            "close": "2",
+            "volume": "1",
+            "time": t_hi,
+        },
+        {
+            "open": "1",
+            "high": "1",
+            "low": "1",
+            "close": "1",
+            "volume": "1",
+            "time": t_lo,
+        },
     ]
     prov._http.get_json = MagicMock(side_effect=[sample, []])  # type: ignore[method-assign]
     rows = prov.get_ohlcv("BTCUSDT", Interval.M1, start, end)
