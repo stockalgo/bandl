@@ -34,6 +34,10 @@ class AuthenticationError(ProviderError):
     """Authentication failed or credentials are missing."""
 
 
+class GeoRestrictionError(ProviderError):
+    """Upstream API blocked the request based on client location (HTTP 451)."""
+
+
 class DataNotAvailableError(BandlError):
     """Requested data is not available for the given range or instrument."""
 

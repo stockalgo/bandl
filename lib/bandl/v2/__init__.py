@@ -7,6 +7,7 @@ from bandl.v2.exceptions import (
     BandlError,
     ConfigurationError,
     DataNotAvailableError,
+    GeoRestrictionError,
     ProviderError,
     RateLimitError,
     SymbolNotFoundError,
@@ -26,5 +27,6 @@ __all__ = [
     "AuthenticationError",
     "RateLimitError",
     "DataNotAvailableError",
+    "GeoRestrictionError",
     "ConfigurationError",
 ]

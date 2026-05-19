@@ -95,6 +95,14 @@ nifty = client.equity.get_ohlcv_dataframe(
 
 Switch provider with `source="binance"` | `"coindcx"` | `"zerodha"`, or use **`client.crypto`** / **`client.equity`** (defaults per facet).
 
+> **Binance HTTP 451 (restricted location)?** Binance blocks many regions and cloud IPs (e.g. US, Google Colab). Use **CoinDCX** instead — same symbols, no API key:
+>
+> ```python
+> df = client.crypto.get_ohlcv_dataframe("BTCUSDT", Interval.D1, start, end, source="coindcx")
+> ```
+>
+> Or set `BandlConfig(default_crypto_provider="coindcx")`.
+
 ---
 
 ## Common patterns

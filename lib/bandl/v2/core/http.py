@@ -11,7 +11,7 @@ from urllib.parse import urlparse, urlunparse
 import httpx
 
 from bandl.v2.config import BandlConfig
-from bandl.v2.exceptions import AuthenticationError, ProviderError
+from bandl.v2.exceptions import AuthenticationError, GeoRestrictionError, ProviderError
 
 
 def _safe_url_for_errors(url: Any) -> str:
@@ -41,6 +41,13 @@ def _provider_http_error(provider: str, exc: httpx.HTTPStatusError) -> ProviderE
         msg = f"{msg}: {detail}"
     if exc.response.status_code in (401, 403):
         return AuthenticationError(provider, msg, code=code)
+    if exc.response.status_code == 451:
+        hint = (
+            " This usually means Binance blocks your region or IP "
+            "(common on US cloud hosts and Colab). "
+            "Try source='coindcx' for crypto, or run from a permitted network."
+        )
+        return GeoRestrictionError(provider, msg + hint, code=code)
     return ProviderError(provider, msg, code=code)
 
 
