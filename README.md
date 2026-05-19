@@ -102,6 +102,14 @@ Switch provider with `source="binance"` | `"coindcx"` | `"zerodha"`, or use **`c
 > ```
 >
 > Or set `BandlConfig(default_crypto_provider="coindcx")`.
+>
+> **CoinDCX empty `DataFrame`?** The public candles API can **lag** (latest daily bars may end months before “today”). If your `start`/`end` are entirely after the feed, bandl raises **`DataNotAvailableError`** with the available date span. Use a window that overlaps the feed, for example:
+>
+> ```python
+> end = datetime(2025, 7, 20, tzinfo=timezone.utc)
+> start = end - timedelta(days=30)
+> df = client.crypto.get_ohlcv_dataframe("BTCUSDT", Interval.D1, start, end, source="coindcx")
+> ```
 
 ---
 

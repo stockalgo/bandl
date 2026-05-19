@@ -9,7 +9,7 @@ from typing import Any
 from bandl.v2.config import BandlConfig, ProviderSettings
 from bandl.v2.core.http import HttpClient
 from bandl.v2.core.resolver import ResolvedSymbol, resolve_symbol
-from bandl.v2.exceptions import ProviderError, SymbolNotFoundError
+from bandl.v2.exceptions import DataNotAvailableError, ProviderError, SymbolNotFoundError
 from bandl.v2.models import OHLCV, SymbolInfo
 from bandl.v2.models.types import AssetType, Interval
 
@@ -109,6 +109,7 @@ class CoinDCXProvider:
         # CoinDCX returns [] when both startTime and endTime are set; paginate with endTime only.
         rows: list[dict[str, Any]] = []
         seen: set[int] = set()
+        all_times_ms: list[int] = []
         cursor_end = end_ms
         safety = 0
         while cursor_end >= start_ms and safety < 50:
@@ -135,6 +136,7 @@ class CoinDCXProvider:
             for c in normalized:
                 t = _candle_time_ms(c, provider_id=self.provider_id)
                 times.append(t)
+                all_times_ms.append(t)
                 if start_ms <= t <= end_ms and t not in seen:
                     seen.add(t)
                     rows.append(c)
@@ -144,6 +146,21 @@ class CoinDCXProvider:
             cursor_end = oldest - 1
             if len(normalized) < 1000:
                 break
+
+        if not rows and all_times_ms:
+            latest_ms = max(all_times_ms)
+            earliest_ms = min(all_times_ms)
+            latest_dt = datetime.fromtimestamp(latest_ms / 1000, tz=timezone.utc)
+            earliest_dt = datetime.fromtimestamp(earliest_ms / 1000, tz=timezone.utc)
+            req_start = _ensure_utc(start)
+            req_end = _ensure_utc(end)
+            raise DataNotAvailableError(
+                f"CoinDCX returned candles for {pair} but none fall in the requested window "
+                f"({req_start.date()} to {req_end.date()}). "
+                f"Available span from this pagination: {earliest_dt.date()} to {latest_dt.date()}. "
+                f"The public candles feed may lag behind real time; try an earlier end date "
+                f"(e.g. end={latest_dt.date().isoformat()}) or another provider where available.",
+            )
 
         interval_label: str = interval.value if isinstance(interval, Interval) else str(interval)
         out: list[OHLCV] = []
