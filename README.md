@@ -1,110 +1,280 @@
+<p align="center">
+  <a href="https://bandl.io" target="_blank">
+    <img src="https://raw.githubusercontent.com/stockalgo/bandl/master/img/logo.svg" alt="bandl" width="200">
+  </a>
+</p>
 
-<p align="center"><a href="http://bandl.io" target="_blank"><img src="https://raw.githubusercontent.com/stockalgo/bandl/master/img/logo.svg"></a> </p>
+<p align="center">
+  <strong>Unified market data for Indian equities and crypto</strong><br>
+  One client, multiple providers — historical OHLCV as pandas or structured bars.
+</p>
 
-bandl is open source library, provides apis for equity stock, derivatives, commodities, and cryptocurrencies.
+<p align="center">
+  <a href="https://pypi.org/project/bandl/"><img src="https://img.shields.io/pypi/v/bandl.svg" alt="PyPI"></a>
+  <a href="https://pypi.org/project/bandl/"><img src="https://img.shields.io/pypi/pyversions/bandl.svg" alt="Python"></a>
+  <a href="https://github.com/stockalgo/bandl/blob/master/LICENSE"><img src="https://img.shields.io/github/license/stockalgo/bandl.svg" alt="License"></a>
+</p>
 
-# Demo
+---
 
-<p align="center"><a href="http://bandl.io" target="_blank"><img src="https://raw.githubusercontent.com/stockalgo/bandl/master/img/demo.gif"></a> </p>
-
-## Installation
-
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install bandl.
+## Install
 
 ```bash
 pip install bandl
 ```
 
-<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+Requires **Python 3.10+**. For development: `pip install -e ".[dev]"` (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
-<!-- code_chunk_output -->
+---
 
-- [Installation](#installation)
-- [Usage](#usage)
-  - [To import NSE Data Module](#to-import-nse-data-module)
-    - [To get Option chain data from New NSE website](#to-get-option-chain-data-from-new-nse-website)
-    - [To get Option chain data](#to-get-option-chain-data)
-    - [To get stock historical data.](#to-get-stock-historical-data)
-    - [To get FII/DII data.](#to-get-fiidii-data)
-   - [To get Stock data from Nasdaq](#to-get-stock-data-from-nasdaq)
-   - [To get Stock data from Yahoo Finance](#to-get-stock-data-from-yahoo-finance)
-   - [To get Crypto Currencies data from Binance](#to-get-crypto-currencies-data-from-binance)
-   - [To get Crypto Currencies data from Coinbase](#to-get-crypto-currencies-data-from-coinbase)
-- [Contributing](#contributing)
-- [License](#license)
+## Quick start
 
-<!-- /code_chunk_output -->
+Import **`bandl.v2`**, create a **`Bandl`** client, and fetch candles. **Binance** and **CoinDCX** public endpoints work without API keys.
 
+```python
+from datetime import datetime, timedelta, timezone
 
-## Usage
+from bandl.v2 import Bandl, Interval
 
-### To Get Stock/Option Data form NSE
+client = Bandl()
+end = datetime.now(timezone.utc)
+start = end - timedelta(days=30)
+
+# Crypto — daily BTC/USDT from Binance (default crypto provider)
+df = client.crypto.get_ohlcv_dataframe("BTC/USDT", Interval.D1, start, end)
+print(df[["timestamp", "open", "high", "low", "close", "volume"]].tail())
+```
+
+**Indian equities (Zerodha Kite)** need a [Kite Connect](https://kite.trade/docs/connect/v3/) API key and access token:
+
+```python
+from bandl.v2 import Bandl, BandlConfig, Interval, ProviderSettings
+
+client = Bandl(
+    BandlConfig(
+        providers={
+            "zerodha": ProviderSettings(
+                api_key="your_kite_api_key",
+                access_token="your_daily_access_token",
+            ),
+        },
+    ),
+)
+
+df = client.equity.get_ohlcv_dataframe(
+    "RELIANCE",
+    Interval.D1,
+    start,
+    end,
+    source="zerodha",
+)
+print(df.tail())
+```
+
+**Indices** use the same API (aliases like `NIFTY 50` → `NIFTY50` are handled for you):
+
+```python
+nifty = client.equity.get_ohlcv_dataframe(
+    "NIFTY 50",
+    Interval.D1,
+    start,
+    end,
+    source="zerodha",
+)
+```
+
+---
+
+## What you can fetch
+
+| Market | Provider | Auth | Example symbols |
+|--------|----------|------|-----------------|
+| Crypto spot | `binance` | None (public klines) | `BTC/USDT`, `BTCUSDT`, `ETHUSDT` |
+| Crypto spot | `coindcx` | None (public candles) | `BTCUSDT`, `ETHUSDT` |
+| NSE equities & indices | `zerodha` | Kite API key + access token | `RELIANCE`, `NIFTY 50`, `BANKNIFTY` |
+
+Switch provider with `source="binance"` | `"coindcx"` | `"zerodha"`, or use **`client.crypto`** / **`client.equity`** (defaults per facet).
+
+---
+
+## Common patterns
+
+### Pandas `DataFrame` (default for analysis)
+
+```python
+df = client.crypto.get_ohlcv_dataframe("ETHUSDT", Interval.D1, start, end)
+```
+
+### Typed list of bars (no pandas required in your pipeline)
+
+```python
+from bandl.v2 import OHLCV
+
+bars: list[OHLCV] = client.crypto.get_ohlcv("BTCUSDT", Interval.H1, start, end)
+for bar in bars[-5:]:
+    print(bar.timestamp, bar.close, bar.source)
+```
+
+### Another crypto exchange
+
+```python
+df = client.crypto.get_ohlcv_dataframe(
+    "BTCUSDT",
+    Interval.D1,
+    start,
+    end,
+    source="coindcx",
+)
+```
+
+### List tradable symbols
+
+```python
+# Crypto (Binance spot, trading status)
+symbols = client.list_symbols(source="binance", search="BTC", limit=20)
+
+# NSE equities + indices (Zerodha — requires credentials)
+symbols = client.list_symbols(
+    source="zerodha",
+    exchange="NSE",
+    instrument_types=("EQ",),
+    search="RELI",
+    limit=10,
+)
+```
+
+### Intervals
+
+Use `Interval` enums or provider-native strings where supported:
+
+```python
+from bandl.v2 import Interval
+
+Interval.M1   # 1m
+Interval.H1   # 1h
+Interval.D1   # 1d
+```
+
+Timestamps in responses are **UTC**. Convert for display if you need IST:
+
+```python
+df["timestamp"] = df["timestamp"].dt.tz_convert("Asia/Kolkata")
+```
+
+---
+
+## Configuration
+
+| Variable / setting | Purpose |
+|--------------------|---------|
+| `BandlConfig.providers["zerodha"]` | `api_key`, `access_token` for Kite |
+| `BandlConfig.providers["binance"]` | Optional keys for future signed APIs |
+| `BandlConfig.timeout_seconds` | HTTP timeout (default 30s) |
+| `BandlConfig.default_crypto_provider` | Default for `client.crypto` (`binance`) |
+| `BandlConfig.default_equity_provider` | Default for `client.equity` (`zerodha`) |
+
+**Zerodha:** access tokens expire daily — regenerate after login. A 403 on historical data usually means an expired token, wrong API key, or missing historical API access on your Kite app.
+
+Runnable demos:
+
+```bash
+cp examples/.env.example .env   # add ZERODHA_* if testing Kite
+python examples/main.py
+python examples/v2_quickstart.py
+```
+
+---
+
+## Demo
+
+<p align="center">
+  <a href="https://bandl.io" target="_blank">
+    <img src="https://raw.githubusercontent.com/stockalgo/bandl/master/img/demo.gif" alt="bandl demo">
+  </a>
+</p>
+
+---
+
+## Legacy modules (pre–V2)
+
+Older helpers remain importable for NSE options, Yahoo Finance, legacy Binance wrappers, etc. New projects should prefer **`bandl.v2`**.
+
+<details>
+<summary><strong>NSE, Nasdaq, Yahoo, legacy Binance/Coinbase</strong></summary>
+
+### NSE (options & historical)
+
 ```python
 from bandl.nse_data import NseData
-nd = NseData() # returns 'NseData object'. can be use to get nse data.
-```
-#### To get Option chain data from New NSE website
-```python
+
+nd = NseData()
 strikes = nd.get_oc_strike_prices("NIFTY")
-oc_data = nd.get_option_data("NIFTY",strikes=strikes)
+oc_data = nd.get_option_data("NIFTY", strikes=strikes)
+
+df = nd.get_data("RELIANCE", series="EQ", periods=30)
+part_oi_df = nd.get_part_oi_df(periods=66)
 ```
 
-#### To get Option chain data from old website
-```python
-expiry_dates = nd.get_oc_exp_dates(symbol) #return available expiry dates
-nd.get_option_chain_excel(symbol,expiry_date,filepath) #dumps option chain to file_path
-# or get in pandas dateframe
-bn_df = nd.get_option_chain_df(symbol, expiry_date,dayfirst=False) #returns option chain in pandas data frame.
-```
-#### To get stock historical data.
-```python
-data_frame = nd.get_data(symbol,series="EQ",start=None,end=None,periods=None,dayfirst=False) #returns historical data in pandas data frames
-```
+### Nasdaq
 
-#### To get FII/DII data.
-```python
-part_oi_df = nd.get_part_oi_df(start=None,end=None,periods=None,dayfirst=False,workers=None)
-```
-### To get Stock data from Nasdaq
 ```python
 from bandl.nasdaq import Nasdaq
-testObj = Nasdaq() # returns 'Nasdaq class object'.
-dfs = testObj.get_data("AAPL",periods=15) # returns last 15 days data
-```
-### To get Stock data from Yahoo Finance
-```python
-from bandl.yfinance import Yfinance
-testObj = Yfinance() # returns 'Yfinance class object'.
-#if US stock, then pass is_indian=False
-dfs = testObj.get_data("AAPL",is_indian=False) #by default, returns last years data
-#to get indian stock data
-dfs = testObj.get_data("SBIN",start="21-Jan-2020") #retruns data from 21Jan 2020 to till today
-```
-### To get Crypto Currencies data from Binance
-```python
-from bandl.binance import Binance
-testObj = Binance() # returns 'Binance class object'.
-#to get all crypto tickers
-tkrs = testObj.get_tickers() #by default, returns all tickers
-dfs = testObj.get_data("ETHBTC",start="21-Jan-2020") #retruns data from 21Jan 2020 to till today
-```
-### To get Crypto Currencies data from Coinbase
-```python
-from bandl.coinbase import Coinbase
-testObj = Coinbase() # returns 'Coinbase class object'.
-dfs = testObj.get_data("BTC-USD",start="21-Jan-2020",end="21-Jan-2021")#retruns data from 21Jan 2020 to 21-Jan-2021
+
+dfs = Nasdaq().get_data("AAPL", periods=15)
 ```
 
-### Todo
-- Add streaming data support
-- Support for fundamental data
-- Write unit tests
-- Add more brokers
+### Yahoo Finance
+
+```python
+from bandl.yfinance import Yfinance
+
+yf = Yfinance()
+us = yf.get_data("AAPL", is_indian=False)
+india = yf.get_data("SBIN", start="21-Jan-2020")
+```
+
+### Legacy Binance / Coinbase
+
+```python
+from bandl.binance import Binance
+from bandl.coinbase import Coinbase
+
+Binance().get_data("ETHBTC", start="21-Jan-2020")
+Coinbase().get_data("BTC-USD", start="21-Jan-2020", end="21-Jan-2021")
+```
+
+</details>
+
+---
+
+## Documentation & development
+
+- [docs/BANDL_V2.md](docs/BANDL_V2.md) — design notes and provider behavior  
+- [docs/PYPI_TRUSTED_PUBLISHING.md](docs/PYPI_TRUSTED_PUBLISHING.md) — release process for maintainers  
+- [CONTRIBUTING.md](CONTRIBUTING.md) — tests, Ruff, pull requests  
+- [SECURITY.md](SECURITY.md) — reporting vulnerabilities  
+
+```bash
+pytest tests/v2/          # unit tests
+ruff check lib/bandl/v2 tests/v2
+```
+
+---
+
+## Roadmap
+
+- Live streams / WebSockets  
+- More brokers and MCX commodity history  
+- Broader `SymbolInfo` and fundamentals  
+
+---
 
 ## Contributing
 
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, tests, Ruff, and pull request expectations.  
-Legacy note: PEP 8 remains the baseline; V2 code is also checked with **Ruff** in CI.
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before opening a pull request.
+
+---
 
 ## License
-[MIT](https://choosealicense.com/licenses/mit/)
+
+[MIT](LICENSE)
