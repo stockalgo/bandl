@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bandl"
-version = "0.3.0"
+version = "0.4.0"
 description = "Unified market data and account history with pluggable providers"
 readme = "README.md"
 license = "MIT"

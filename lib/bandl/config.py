@@ -21,7 +21,7 @@ class BandlConfig(BaseModel):
 
     timeout_seconds: float = Field(default=30.0, ge=1.0)
     max_http_retries: int = Field(default=3, ge=0)
-    user_agent: str = Field(default="bandl/0.3 (+https://github.com/stockalgo/bandl)")
+    user_agent: str = Field(default="bandl/0.4 (+https://github.com/stockalgo/bandl)")
 
     # default provider ids per facet
     default_crypto_provider: str = "binance"
