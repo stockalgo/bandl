@@ -273,6 +273,16 @@ Coinbase().get_data("BTC-USD", start="21-Jan-2020", end="21-Jan-2021")
 
 ---
 
+## For AI agents
+
+**[AGENTS.md](AGENTS.md)** is the agent API reference (provider matrix, recipes, errors). It is **not** shipped inside the PyPI wheel — share a GitHub link with your agent, for example:
+
+`https://github.com/stockalgo/bandl/blob/master/AGENTS.md`
+
+Install the library with `pip install bandl`; point the agent at that file for how to call it. Pin a release tag in the URL (e.g. `.../blob/v0.3.0/AGENTS.md`) when you need a fixed doc version. See [agents/README.md](agents/README.md).
+
+---
+
 ## Documentation & development
 
 - [docs/BANDL_V2.md](docs/BANDL_V2.md) — design notes and provider behavior  
