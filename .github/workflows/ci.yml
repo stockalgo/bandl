@@ -34,14 +34,14 @@ jobs:
           ruff check
           lib/bandl/account lib/bandl/core lib/bandl/models lib/bandl/providers
           lib/bandl/client.py lib/bandl/config.py lib/bandl/exceptions.py
-          lib/bandl/v2 tests/bandl
+          tests/bandl
 
       - name: Ruff format
         run: >-
           ruff format
           lib/bandl/account lib/bandl/core lib/bandl/models lib/bandl/providers
           lib/bandl/client.py lib/bandl/config.py lib/bandl/exceptions.py
-          lib/bandl/v2 tests/bandl
+          tests/bandl
           --check
 
   test:

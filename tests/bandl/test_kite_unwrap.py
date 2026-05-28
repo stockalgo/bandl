@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from bandl.exceptions import ProviderError
-from bandl.providers.equity.zerodha_common import kite_unwrap
+from bandl.providers.equity.zerodha.common import kite_unwrap
 
 
 def test_kite_unwrap_list() -> None:

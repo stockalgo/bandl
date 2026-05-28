@@ -40,7 +40,7 @@ Use **bandl** when you need **historical OHLCV** (crypto spot, NSE equities/indi
 | Account orders/fills/ledger/PnL | `client.account.*` | `coindcx`, `zerodha` (auth) |
 | Symbol discovery | `client.list_symbols(source=...)` | per provider |
 
-**Not in bandl:** crypto **futures/perp OHLCV charts**, live streams, calendar-month Zerodha trade history via API, unsigned Binance futures, US equities via current client (use legacy `yfinance` / `nasdaq`).
+**Not in bandl:** live WebSockets, US equities, NSE options bhavcopy, calendar-month Zerodha trade history via API. CoinDCX futures candles: no M3/H2/H6; Binance = USDT-M perpetuals only.
 
 ---
 
@@ -76,14 +76,15 @@ Bandl(config?: BandlConfig)
 ├── .account         → AccountFacet
 ├── .get_ohlcv(...)           # low-level; prefer facets
 ├── .get_ohlcv_dataframe(...)
-├── .list_symbols(source=..., search=..., limit=...)
+├── .list_symbols(source=..., search=..., limit=..., asset_type=...)
+├── .get_24hr_tickers(source=..., asset_type=...)  # Binance / CoinDCX USDT-M futures
 ├── .list_providers()         # ["binance", "coindcx", "zerodha"]
 └── .configure_provider(name, ProviderSettings)
 ```
 
 **Facet shortcuts** (same signatures; `source` defaults to facet provider):
 
-- `client.crypto.get_ohlcv`, `get_ohlcv_dataframe`, `list_symbols`
+- `client.crypto.get_ohlcv`, `get_ohlcv_dataframe`, `list_symbols`, `get_24hr_tickers`
 - `client.equity.get_ohlcv`, `get_ohlcv_dataframe`, `list_symbols`
 
 ---
@@ -97,8 +98,10 @@ USER WANTS MARKET CANDLES?
 │  └─ On GeoRestrictionError (HTTP 451) → source="coindcx"
 ├─ Indian stock or index (RELIANCE, NIFTY)
 │  └─ source="zerodha" + ZERODHA_API_KEY + ZERODHA_ACCESS_TOKEN
-└─ Crypto futures/perp CHARTS?
-   └─ NOT SUPPORTED for OHLCV → use spot chart OR coindcx account fills/PnL
+└─ Crypto futures/perp OHLCV?
+   └─ `asset_type=AssetType.CRYPTO_PERP` (or `CRYPTO_FUTURE`) on `get_ohlcv` / `list_symbols`
+      - binance → `fapi.binance.com` (USDT-M perpetuals)
+      - coindcx → `market_data/candlesticks?pcode=f` + `active_instruments`
 
 USER WANTS ACCOUNT DATA (orders/fills/PnL)?
 ├─ CoinDCX (spot + USDT futures account)
@@ -115,8 +118,8 @@ USER WANTS ACCOUNT DATA (orders/fills/PnL)?
 
 | provider | asset_types | market methods | account methods | auth | intervals (OHLCV) | symbol format | known limits |
 |----------|-------------|----------------|-----------------|------|-------------------|---------------|--------------|
-| **binance** | crypto spot | `get_ohlcv`, `list_symbols` | — | none (public klines) | M1,M3,M5,M15,M30,H1,H2,H4,H6,H8,D1,D3,W1,MO1 | `BTCUSDT`, `BTC/USDT` → `BTCUSDT` | Geo-block HTTP **451** on some IPs; max 1000 klines/request; **no futures OHLCV** in bandl |
-| **coindcx** | crypto **spot** (public candles) | `get_ohlcv`, `list_symbols` | orders, fills, ledger, pnl (spot + **USDT futures**) | public OHLCV: none; account: api_key + api_secret | M1,M5,M15,M30,H1,H2,H4,H6,H8,D1,D3,W1,MO1 (**no M3**) | canonical `BTCUSDT`; API pair `B-BTC_USDT` | Candles: paginate with `endTime` only; feed may **lag** → empty DF or `DataNotAvailableError`; **no public futures OHLCV** |
+| **binance** | spot + **USDT-M perp** | `get_ohlcv`, `list_symbols`, `get_24hr_tickers` (futures) | — | none (public) | spot & futures: M1–MO1 (same enum) | `BTCUSDT` | Spot: `api.binance.com`; futures: `fapi.binance.com`; 24h %: `/fapi/v1/ticker/24hr`. Geo **451** → coindcx |
+| **coindcx** | spot + **futures perp** | `get_ohlcv`, `list_symbols`, `get_24hr_tickers` (futures) | orders, fills, ledger, pnl | OHLCV public; account: keys | spot: all intervals; futures candles: M1,M5,M15,M30,H1,H4,H8,D1,D3,W1,MO1 (**no M3/H2/H6**) | spot `B-BTC_USDT`; futures same pair + `pcode=f` | Spot candles lag; futures `from`/`to` in **seconds**; 24h %: `current_prices/futures/rt` (active USDT instruments only) |
 | **zerodha** | NSE/BSE equity, indices | `get_ohlcv`, `list_symbols` | orders, fills, ledger, pnl | api_key + access_token | M1–M30,H1; H2/H4→60m; D1/W1/MO1→day | `RELIANCE`, `NIFTY50`; index API name `NIFTY 50` | Token expires daily; orders/trades = **current session only**; holdings PnL ≈ lifetime snapshot |
 
 ### Account capability flags (call `client.account.capabilities(source)`)
@@ -197,7 +200,7 @@ Pass `Interval.H1` or string `"1h"`.
 
 **USE WHEN:** user wants list of OHLCV bars (typed models).
 
-**PARAMS:** `symbol`, `interval=Interval.D1`, `start=None`, `end=None`, `source=None`, `asset_type=None`, `**kwargs` (Zerodha: `exchange`, `tradingsymbol`, `instrument_token`)
+**PARAMS:** `symbol`, `interval=Interval.D1`, `start=None`, `end=None`, `source=None`, `asset_type=None` (`CRYPTO_SPOT` default; use `CRYPTO_PERP` for futures), `**kwargs` (Zerodha: `exchange`, …; CoinDCX futures list: `margin_currencies=["USDT"]`)
 
 **RETURNS:** `list[OHLCV]` — fields: `timestamp` (UTC), `open`, `high`, `low`, `close`, `volume`, `quote_volume?`, `trades?`, `symbol`, `interval`, `source`
 
@@ -243,7 +246,7 @@ df = client.crypto.get_ohlcv_dataframe("BTC/USDT", Interval.D1, start, end)
 
 **USE WHEN:** screening, pair discovery, building symbol loops.
 
-**PARAMS:** `source` (**required**), `search=None`, `limit=None`, `**kwargs` (zerodha: `exchange="NSE"`, `instrument_types`)
+**PARAMS:** `source` (**required**), `search=None`, `limit=None`, `asset_type=None` (`CRYPTO_PERP` for futures universe), `**kwargs` (zerodha: `exchange="NSE"`; coindcx futures: `margin_currencies`)
 
 **RETURNS:** `list[SymbolInfo]`
 
@@ -397,7 +400,7 @@ pnl = client.account.get_pnl(start, end, source="coindcx", segment="crypto_fno")
 |-----------|---------|----------|-------|
 | Daily chart for BTC/USDT | `client.crypto.get_ohlcv_dataframe("BTC/USDT", Interval.D1, start, end)` | binance | No |
 | Screen top 10 BTC pairs on 4h | `list_symbols(source="binance", search="BTC", limit=10)` then loop `get_ohlcv_dataframe(..., Interval.H4, ...)` | binance | No |
-| Crypto futures **daily charts** | **No futures OHLCV** — use spot `BTCUSDT` or account APIs | coindcx spot only for candles | — |
+| Crypto futures daily/weekly charts | `get_ohlcv_dataframe(..., asset_type=AssetType.CRYPTO_PERP)` | binance or coindcx | No |
 | My CoinDCX futures PnL last month | `capabilities("coindcx")` then `get_pnl(start, end, source="coindcx", segment="crypto_fno")` | coindcx | Yes |
 | NIFTY 50 last 6 months | `get_ohlcv_dataframe("NIFTY 50", Interval.D1, start, end, source="zerodha")` | zerodha | Yes |
 | RELIANCE daily bars | `client.equity.get_ohlcv_dataframe("RELIANCE", Interval.D1, start, end)` | zerodha | Yes |
@@ -422,6 +425,39 @@ df = client.crypto.get_ohlcv_dataframe("BTCUSDT", Interval.D1, start, end)
 ```
 
 Provider: **binance** | Auth: **no**
+
+---
+
+### Recipe: futures multi-timeframe screen
+
+**User says:** "Screen BTC USDT perps on 1D and 1W from Binance"
+
+```python
+from bandl import Bandl, Interval
+from bandl.models.market.types import AssetType
+
+client = Bandl()
+syms = client.list_symbols(
+    source="binance",
+    search="BTC",
+    limit=5,
+    asset_type=AssetType.CRYPTO_PERP,
+)
+end = datetime.now(timezone.utc)
+start = end - timedelta(days=90)
+for info in syms:
+    for interval in (Interval.D1, Interval.W1):
+        df = client.crypto.get_ohlcv_dataframe(
+            info.canonical,
+            interval,
+            start,
+            end,
+            source="binance",
+            asset_type=AssetType.CRYPTO_PERP,
+        )
+```
+
+Provider: **binance** `fapi` | Auth: **no**
 
 ---
 
@@ -670,26 +706,14 @@ bandl does **not** auto-load `.env`; agents must read env and pass `ProviderSett
 
 | request | bandl status | alternative |
 |---------|--------------|-------------|
-| Crypto **futures/perp OHLCV** charts | **Not implemented** | Spot OHLCV (`BTCUSDT`); CoinDCX `get_fills` / `get_pnl` for futures account |
+| CoinDCX futures **M3 / H2 / H6** candles | **Not supported** on candlesticks API | Use M5, H1, H4, H8, D1, W1, etc. |
 | Live WebSockets / streaming | **Not implemented** | poll `get_ohlcv` |
 | Async `await` client | **Not implemented** | sync calls only |
 | Zerodha **historical** orders/fills for past months | **Not available** (Kite session APIs) | broker statements; holdings snapshot only |
 | Binance account/futures in bandl | **Not implemented** | CoinDCX account or native Binance SDK |
-| US equities via unified client | **Not implemented** | legacy `bandl.yfinance`, `bandl.nasdaq` |
-| NSE options chain / bhavcopy | **Not in unified client** | legacy `bandl.nse_data.NseData` |
+| US equities | **Not implemented** | — |
+| NSE options chain / bhavcopy | **Not implemented** | — |
 | Calendar-month PnL guarantee (Zerodha) | **Unreliable** | use CoinDCX for crypto history; external reports for equity |
-
----
-
-## Legacy vs current
-
-| import | status | use when |
-|--------|--------|----------|
-| `from bandl import Bandl` | **canonical** | all new code |
-| `bandl.v2` | **deprecated** (`DeprecationWarning`) | migrate to `bandl` |
-| `bandl.binance.Binance` | **legacy** | old string-date API only |
-| `bandl.yfinance`, `bandl.nasdaq` | **legacy** | non-provider US/global data |
-| `bandl.nse_data.NseData` | **legacy** | NSE-specific downloads |
 
 Account history details: [docs/ACCOUNT_HISTORY.md](docs/ACCOUNT_HISTORY.md) (human-oriented; facts mirrored above).
 
@@ -713,7 +737,7 @@ Package version: see `pyproject.toml` `project.version`.
 ## Quick capability answers (FAQ)
 
 **Q: Crypto futures daily charts?**  
-A: **No** public futures OHLCV in bandl. Use **spot** `get_ohlcv_dataframe` or CoinDCX **account** `get_pnl` / `get_fills` with `segment="crypto_fno"`.
+A: `client.crypto.get_ohlcv_dataframe("BTCUSDT", Interval.D1, start, end, asset_type=AssetType.CRYPTO_PERP, source="binance"|"coindcx")`. List universe: `list_symbols(source=..., asset_type=AssetType.CRYPTO_PERP)`.
 
 **Q: Default provider for `client.crypto.get_ohlcv`?**  
 A: `binance` unless `BandlConfig.default_crypto_provider` or `source=` override.

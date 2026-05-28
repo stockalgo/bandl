@@ -10,6 +10,7 @@ import pandas as pd
 
 from bandl.core.account_filters import AccountFilters, default_account_range
 from bandl.core.capabilities import AccountCapabilities
+from bandl.core.dataframe import models_to_dataframe
 from bandl.core.provider import AccountHistoryProvider
 from bandl.exceptions import BandlError, ConfigurationError, UnsupportedCapabilityError
 from bandl.models.account import AccountFill, AccountOrder, LedgerEntry, PnLRecord
@@ -17,9 +18,7 @@ from bandl.models.account.types import PnLGranularity
 
 
 def _to_dataframe(rows: list[Any]) -> pd.DataFrame:
-    if not rows:
-        return pd.DataFrame()
-    return pd.DataFrame([r.model_dump() for r in rows])
+    return models_to_dataframe(rows)
 
 
 def _merge_by_dedup(rows: list[Any]) -> list[Any]:
