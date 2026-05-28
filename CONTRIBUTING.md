@@ -2,6 +2,8 @@
 
 Thank you for helping improve Bandl. This document describes how to set up your environment, run checks, and open changes.
 
+**AI coding agents:** use [AGENTS.md](AGENTS.md) for API lookup and task recipes (not this file).
+
 ## Development setup
 
 ```bash

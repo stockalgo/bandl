@@ -1,5 +1,7 @@
 # Bandl — implementation notes
 
+**AI coding agents:** use [AGENTS.md](../AGENTS.md) for API lookup and task recipes.
+
 ## Layout
 
 - Source lives under [`lib/bandl/v2/`](../lib/bandl/v2/); legacy modules remain in [`lib/bandl/`](../lib/bandl/) (`yfinance.py`, `nse_data.py`, etc.).
