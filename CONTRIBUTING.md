@@ -19,22 +19,24 @@ pip install -e ".[dev]"
 Unit tests (default; no network):
 
 ```bash
-pytest tests/v2/
+pytest tests/bandl/
 ```
 
 Integration tests (public market APIs; optional):
 
 ```bash
-pytest tests/v2/ -m integration --override-ini="addopts="
+pytest tests/bandl/ -m integration --override-ini="addopts="
 ```
 
 ## Linting and formatting
 
-[Ruff](https://docs.astral.sh/ruff/) enforces style on `lib/bandl/v2` and `tests/v2`:
+[Ruff](https://docs.astral.sh/ruff/) enforces style on the library and tests:
 
 ```bash
-ruff check lib/bandl/v2 tests/v2
-ruff format lib/bandl/v2 tests/v2
+ruff check lib/bandl/account lib/bandl/core lib/bandl/models lib/bandl/providers \
+  lib/bandl/client.py lib/bandl/config.py lib/bandl/exceptions.py tests/bandl
+ruff format lib/bandl/account lib/bandl/core lib/bandl/models lib/bandl/providers \
+  lib/bandl/client.py lib/bandl/config.py lib/bandl/exceptions.py tests/bandl
 ```
 
 CI runs `ruff check` and `ruff format --check` on pull requests.

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
+
+from bandl.core.time import default_time_range
 
 
 @dataclass
@@ -22,17 +24,4 @@ def default_account_range(
     *,
     default_days: int = 30,
 ) -> tuple[datetime, datetime]:
-    end_dt = end or datetime.now(timezone.utc)
-    if start is None:
-        start_dt = end_dt - timedelta(days=default_days)
-    else:
-        start_dt = start
-    if end_dt.tzinfo is None:
-        end_dt = end_dt.replace(tzinfo=timezone.utc)
-    if start_dt.tzinfo is None:
-        start_dt = start_dt.replace(tzinfo=timezone.utc)
-    if start_dt >= end_dt:
-        from bandl.exceptions import BandlError
-
-        raise BandlError("start must be before end")
-    return start_dt, end_dt
+    return default_time_range(start, end, default_days=default_days)

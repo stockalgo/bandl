@@ -196,7 +196,23 @@ Runnable demos:
 ```bash
 cp examples/.env.example .env   # add ZERODHA_* if testing Kite
 python examples/main.py
-python examples/v2_quickstart.py
+python examples/futures_24hr_leaders.py --source coindcx
+```
+
+### Account history
+
+Fetch orders, fills, and PnL with **`client.account`**. See [docs/ACCOUNT_HISTORY.md](docs/ACCOUNT_HISTORY.md).
+
+```python
+fills = client.account.get_fills(start, end, source="coindcx")
+pnl = client.account.get_pnl(start, end, source="zerodha", prefer="auto")
+bundle = client.account.export_analysis_bundle(start, end)
+```
+
+### Futures 24h leaders
+
+```python
+tickers = client.crypto.get_24hr_tickers(source="coindcx", asset_type=AssetType.CRYPTO_PERP)
 ```
 
 ---
@@ -208,68 +224,6 @@ python examples/v2_quickstart.py
     <img src="https://raw.githubusercontent.com/stockalgo/bandl/master/img/demo.gif" alt="bandl demo">
   </a>
 </p>
-
----
-
-## Legacy modules (pre–V2)
-
-Older helpers remain importable for NSE options, Yahoo Finance, legacy Binance wrappers, etc. New projects should use **`bandl`** (`bandl.v2` is deprecated).
-
-### Account history (0.3+)
-
-Fetch your orders, fills, and PnL with the **`client.account`** facet. See [docs/ACCOUNT_HISTORY.md](docs/ACCOUNT_HISTORY.md).
-
-```python
-fills = client.account.get_fills(start, end, source="coindcx")
-pnl = client.account.get_pnl(start, end, source="zerodha", prefer="auto")
-bundle = client.account.export_analysis_bundle(start, end)
-```
-
-<details>
-<summary><strong>NSE, Nasdaq, Yahoo, legacy Binance/Coinbase</strong></summary>
-
-### NSE (options & historical)
-
-```python
-from bandl.nse_data import NseData
-
-nd = NseData()
-strikes = nd.get_oc_strike_prices("NIFTY")
-oc_data = nd.get_option_data("NIFTY", strikes=strikes)
-
-df = nd.get_data("RELIANCE", series="EQ", periods=30)
-part_oi_df = nd.get_part_oi_df(periods=66)
-```
-
-### Nasdaq
-
-```python
-from bandl.nasdaq import Nasdaq
-
-dfs = Nasdaq().get_data("AAPL", periods=15)
-```
-
-### Yahoo Finance
-
-```python
-from bandl.yfinance import Yfinance
-
-yf = Yfinance()
-us = yf.get_data("AAPL", is_indian=False)
-india = yf.get_data("SBIN", start="21-Jan-2020")
-```
-
-### Legacy Binance / Coinbase
-
-```python
-from bandl.binance import Binance
-from bandl.coinbase import Coinbase
-
-Binance().get_data("ETHBTC", start="21-Jan-2020")
-Coinbase().get_data("BTC-USD", start="21-Jan-2020", end="21-Jan-2021")
-```
-
-</details>
 
 ---
 
@@ -285,14 +239,15 @@ Install the library with `pip install bandl`; point the agent at that file for h
 
 ## Documentation & development
 
-- [docs/BANDL_V2.md](docs/BANDL_V2.md) — design notes and provider behavior  
+- [docs/BANDL.md](docs/BANDL.md) — layout and design notes  
+- [docs/ACCOUNT_HISTORY.md](docs/ACCOUNT_HISTORY.md) — account facet  
 - [docs/PYPI_TRUSTED_PUBLISHING.md](docs/PYPI_TRUSTED_PUBLISHING.md) — release process for maintainers  
 - [CONTRIBUTING.md](CONTRIBUTING.md) — tests, Ruff, pull requests  
 - [SECURITY.md](SECURITY.md) — reporting vulnerabilities  
 
 ```bash
-pytest tests/v2/          # unit tests
-ruff check lib/bandl/v2 tests/v2
+pytest tests/bandl/
+ruff check lib/bandl/account lib/bandl/core lib/bandl/models lib/bandl/providers tests/bandl
 ```
 
 ---

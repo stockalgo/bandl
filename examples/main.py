@@ -14,20 +14,16 @@ Usage (from repo root):
   export ZERODHA_ACCESS_TOKEN=your_access_token
   python examples/main.py
 
-Requires a venv with V2 dependencies: ``pip install -r requirements.txt`` or ``pip install -e .``
+Install: ``pip install -e .`` (or ``pip install bandl``)
 """
 
 from __future__ import annotations
 
 import os
-import sys
 from datetime import datetime, timedelta, timezone
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _EXAMPLES_DIR = os.path.dirname(os.path.abspath(__file__))
-_lib = os.path.join(_REPO_ROOT, "lib")
-if _lib not in sys.path:
-    sys.path.insert(0, _lib)
 
 from bandl import Bandl, BandlConfig, Interval, ProviderSettings
 from bandl.exceptions import AuthenticationError, SymbolNotFoundError
