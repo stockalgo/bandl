@@ -29,12 +29,12 @@ Requires **Python 3.10+**. For development: `pip install -e ".[dev]"` (see [CONT
 
 ## Quick start
 
-Import **`bandl.v2`**, create a **`Bandl`** client, and fetch candles. **Binance** and **CoinDCX** public endpoints work without API keys.
+Import **`bandl`**, create a **`Bandl`** client, and fetch candles. **Binance** and **CoinDCX** public endpoints work without API keys.
 
 ```python
 from datetime import datetime, timedelta, timezone
 
-from bandl.v2 import Bandl, Interval
+from bandl import Bandl, Interval
 
 client = Bandl()
 end = datetime.now(timezone.utc)
@@ -48,7 +48,7 @@ print(df[["timestamp", "open", "high", "low", "close", "volume"]].tail())
 **Indian equities (Zerodha Kite)** need a [Kite Connect](https://kite.trade/docs/connect/v3/) API key and access token:
 
 ```python
-from bandl.v2 import Bandl, BandlConfig, Interval, ProviderSettings
+from bandl import Bandl, BandlConfig, Interval, ProviderSettings
 
 client = Bandl(
     BandlConfig(
@@ -124,7 +124,7 @@ df = client.crypto.get_ohlcv_dataframe("ETHUSDT", Interval.D1, start, end)
 ### Typed list of bars (no pandas required in your pipeline)
 
 ```python
-from bandl.v2 import OHLCV
+from bandl import OHLCV
 
 bars: list[OHLCV] = client.crypto.get_ohlcv("BTCUSDT", Interval.H1, start, end)
 for bar in bars[-5:]:
@@ -164,7 +164,7 @@ symbols = client.list_symbols(
 Use `Interval` enums or provider-native strings where supported:
 
 ```python
-from bandl.v2 import Interval
+from bandl import Interval
 
 Interval.M1   # 1m
 Interval.H1   # 1h
@@ -213,7 +213,17 @@ python examples/v2_quickstart.py
 
 ## Legacy modules (pre–V2)
 
-Older helpers remain importable for NSE options, Yahoo Finance, legacy Binance wrappers, etc. New projects should prefer **`bandl.v2`**.
+Older helpers remain importable for NSE options, Yahoo Finance, legacy Binance wrappers, etc. New projects should use **`bandl`** (`bandl.v2` is deprecated).
+
+### Account history (0.3+)
+
+Fetch your orders, fills, and PnL with the **`client.account`** facet. See [docs/ACCOUNT_HISTORY.md](docs/ACCOUNT_HISTORY.md).
+
+```python
+fills = client.account.get_fills(start, end, source="coindcx")
+pnl = client.account.get_pnl(start, end, source="zerodha", prefer="auto")
+bundle = client.account.export_analysis_bundle(start, end)
+```
 
 <details>
 <summary><strong>NSE, Nasdaq, Yahoo, legacy Binance/Coinbase</strong></summary>

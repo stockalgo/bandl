@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from bandl.v2 import Bandl, BandlConfig, Interval, ProviderSettings
+from bandl import Bandl, BandlConfig, Interval, ProviderSettings
 
 
 def main() -> None:

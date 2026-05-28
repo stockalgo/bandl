@@ -1,18 +1,39 @@
-"""Bandl V2 — unified market data interfaces (historical OHLCV in this release)."""
+"""Deprecated: import from ``bandl`` instead of ``bandl.v2``."""
 
-from bandl.v2.client import Bandl
-from bandl.v2.config import BandlConfig, ProviderSettings
-from bandl.v2.exceptions import (
+from __future__ import annotations
+
+import warnings
+
+warnings.warn(
+    "bandl.v2 is deprecated; use `from bandl import Bandl` instead",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from bandl import (  # noqa: E402
+    OHLCV,
+    AccountFill,
+    AccountOrder,
     AuthenticationError,
+    Bandl,
+    BandlConfig,
     BandlError,
     ConfigurationError,
     DataNotAvailableError,
     GeoRestrictionError,
+    Interval,
+    LedgerEntry,
+    MarketTrade,  # noqa: E402
+    PnLProvenance,
+    PnLRecord,
     ProviderError,
+    ProviderSettings,
     RateLimitError,
+    SymbolInfo,
     SymbolNotFoundError,
+    Trade,
+    UnsupportedCapabilityError,
 )
-from bandl.v2.models import OHLCV, Interval, SymbolInfo
 
 __all__ = [
     "Bandl",
@@ -21,6 +42,13 @@ __all__ = [
     "OHLCV",
     "SymbolInfo",
     "Interval",
+    "MarketTrade",
+    "Trade",
+    "AccountOrder",
+    "AccountFill",
+    "LedgerEntry",
+    "PnLRecord",
+    "PnLProvenance",
     "BandlError",
     "ProviderError",
     "SymbolNotFoundError",
@@ -29,4 +57,5 @@ __all__ = [
     "DataNotAvailableError",
     "GeoRestrictionError",
     "ConfigurationError",
+    "UnsupportedCapabilityError",
 ]
