@@ -28,4 +28,4 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run integration tests
-        run: pytest tests/v2/ -m integration --override-ini="addopts="
+        run: pytest tests/bandl/ -m integration --override-ini="addopts="

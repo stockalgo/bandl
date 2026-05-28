@@ -29,8 +29,8 @@ _lib = os.path.join(_REPO_ROOT, "lib")
 if _lib not in sys.path:
     sys.path.insert(0, _lib)
 
-from bandl.v2 import Bandl, BandlConfig, Interval, ProviderSettings
-from bandl.v2.exceptions import AuthenticationError, SymbolNotFoundError
+from bandl import Bandl, BandlConfig, Interval, ProviderSettings
+from bandl.exceptions import AuthenticationError, SymbolNotFoundError
 
 
 def _load_env_file(path: str) -> None:
