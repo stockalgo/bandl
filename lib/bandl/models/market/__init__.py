@@ -1,3 +1,9 @@
+from bandl.models.market.contract import (
+    OptionChainEntry,
+    OptionContract,
+    OptionQuote,
+    OptionType,
+)
 from bandl.models.market.kline import Kline
 from bandl.models.market.market_trade import MarketTrade, Trade
 from bandl.models.market.ohlcv import OHLCV
@@ -17,4 +23,8 @@ __all__ = [
     "Orderbook",
     "OrderbookLevel",
     "SymbolInfo",
+    "OptionType",
+    "OptionContract",
+    "OptionQuote",
+    "OptionChainEntry",
 ]

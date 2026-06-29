@@ -26,5 +26,6 @@ class BandlConfig(BaseModel):
     # default provider ids per facet
     default_crypto_provider: str = "binance"
     default_equity_provider: str = "zerodha"
+    default_derivatives_provider: str = "dhan"
 
     providers: dict[str, ProviderSettings] = Field(default_factory=dict)
