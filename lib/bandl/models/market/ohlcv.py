@@ -19,6 +19,7 @@ class OHLCV(BaseModel):
     low: Decimal
     close: Decimal
     volume: Decimal
+    open_interest: Decimal | None = None
     quote_volume: Decimal | None = None
     trades: int | None = None
     symbol: str = Field(description="Canonical symbol (e.g. BTCUSDT, RELIANCE, NIFTY50)")
