@@ -108,7 +108,7 @@ class ScripMaster:
                 f"(expiry={expiry or f'{year}-{month}'})",
             )
         # Earliest matching expiry first (stable for year+month matches).
-        matches.sort(key=lambda t: (t[0] or date.max))
+        matches.sort(key=lambda t: t[0] or date.max)
         exp, row = matches[0]
         return ResolvedInstrument(
             security_id=row["SEM_SMST_SECURITY_ID"],

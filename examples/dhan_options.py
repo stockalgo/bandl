@@ -62,7 +62,12 @@ def main() -> None:
         print(f"\n=== {symbol} 5-min (active, scrip-resolved) ===")
         try:
             df = client.derivatives.get_ohlcv_dataframe(
-                symbol, Interval.M5, start, end, source="dhan", exchange="MCX",
+                symbol,
+                Interval.M5,
+                start,
+                end,
+                source="dhan",
+                exchange="MCX",
             )
             print(f"rows={len(df)}")
             if len(df):
