@@ -23,11 +23,13 @@ from bandl.models.market import (
     Ticker,
 )
 from bandl.models.market.types import AssetType, Interval
+from bandl.portfolio.facet import PortfolioFacet
 from bandl.providers.crypto.binance import BinanceProvider
 from bandl.providers.crypto.coindcx import CoinDCXProvider
 from bandl.providers.crypto.common import is_crypto_futures
 from bandl.providers.dhan import DhanProvider
 from bandl.providers.equity.zerodha import ZerodhaProvider
+from bandl.trade.facet import TradeFacet
 
 _PROVIDER_CLASSES: dict[str, type] = {
     "binance": BinanceProvider,
@@ -208,6 +210,8 @@ class Bandl:
         self.equity = _Facet(self, self._config.default_equity_provider)
         self.derivatives = _DerivativesFacet(self, self._config.default_derivatives_provider)
         self.account = AccountFacet(self)
+        self.trade = TradeFacet(self)
+        self.portfolio = PortfolioFacet(self)
 
     def _pick_default_source(self, rs: ResolvedSymbol) -> str:
         if rs.asset_type in (

@@ -166,3 +166,43 @@ class HttpClient:
         if isinstance(last_exc, httpx.HTTPStatusError):
             raise _provider_http_error(provider, last_exc) from last_exc
         raise ProviderError(provider, f"HTTP failure after retries: {last_exc}") from last_exc
+
+    def put_json(
+        self,
+        url: str,
+        *,
+        provider: str,
+        body: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> Any:
+        """PUT with no automatic retry — order modify must not be replayed blindly."""
+        try:
+            resp = self._client.put(url, json=body or {}, headers=headers)
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                raise ProviderError(provider, "Rate limited", code="429", retryable=True) from e
+            raise _provider_http_error(provider, e) from e
+        except httpx.RequestError as e:
+            raise ProviderError(provider, f"HTTP failure: {e}") from e
+
+    def delete_json(
+        self,
+        url: str,
+        *,
+        provider: str,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> Any:
+        """DELETE with no automatic retry — order cancel must not be replayed blindly."""
+        try:
+            resp = self._client.delete(url, params=params, headers=headers)
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                raise ProviderError(provider, "Rate limited", code="429", retryable=True) from e
+            raise _provider_http_error(provider, e) from e
+        except httpx.RequestError as e:
+            raise ProviderError(provider, f"HTTP failure: {e}") from e

@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 def _kite_segment(exchange: str, product: str) -> str:
     ex = exchange.upper()
-    if ex == "MCX":
+    if ex in ("MCX", "NCO"):  # NCO = NSE commodity derivatives (e.g. CRUDEOIL options)
         return Segment.COMMODITY
     if ex in ("NFO", "BFO", "CDS"):
         return Segment.EQUITY_FNO

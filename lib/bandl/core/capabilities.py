@@ -31,3 +31,39 @@ class AccountCapabilities(BaseModel):
         if isinstance(detail, CapabilityDetail):
             return detail.supported
         return False
+
+
+class TradeCapabilities(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    provider_id: str
+    segments: list[Segment] = Field(default_factory=list)
+    place: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    modify: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    cancel: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    get_open_orders: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    get_order: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    get_trades: CapabilityDetail = Field(default_factory=CapabilityDetail)
+
+    def supports(self, capability: str) -> bool:
+        detail = getattr(self, capability, None)
+        if isinstance(detail, CapabilityDetail):
+            return detail.supported
+        return False
+
+
+class PortfolioCapabilities(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    provider_id: str
+    segments: list[Segment] = Field(default_factory=list)
+    positions: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    holdings: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    balances: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    margin: CapabilityDetail = Field(default_factory=CapabilityDetail)
+
+    def supports(self, capability: str) -> bool:
+        detail = getattr(self, capability, None)
+        if isinstance(detail, CapabilityDetail):
+            return detail.supported
+        return False
