@@ -29,12 +29,13 @@ In Cursor / similar IDEs you can also `@AGENTS.md` from a cloned repo, or add th
 
 ## When to use bandl
 
-Use **bandl** for **historical OHLCV** from one sync Python client with normalized models and pandas output:
+Use **bandl** for **historical OHLCV** and **live trading/portfolio** from one sync Python client with normalized models and pandas output:
 
 - **Crypto spot/perp** (Binance, CoinDCX)
 - **Indian equities & indices** (Zerodha)
 - **Options** — NSE/BSE F&O and MCX commodities, **including expired contracts** (Dhan)
 - **Broker account history** — orders, fills, ledger, PnL (CoinDCX, Zerodha)
+- **Live trading & portfolio** — place/modify/cancel orders, live order state, positions, holdings, balances, margin (Zerodha, Dhan)
 
 bandl is **sync HTTP only** — no WebSockets, no async client.
 
@@ -45,10 +46,12 @@ bandl is **sync HTTP only** — no WebSockets, no async client.
 | Crypto spot/perp OHLCV | `client.crypto.*` | `binance` (default), `coindcx` |
 | Indian equity/index OHLCV | `client.equity.*` | `zerodha` (auth) |
 | Option OHLCV / chain / expiries | `client.derivatives.*` | `dhan` (auth) |
-| Account orders/fills/ledger/PnL | `client.account.*` | `coindcx`, `zerodha` (auth) |
+| Account orders/fills/ledger/PnL (history) | `client.account.*` | `coindcx`, `zerodha` (auth) |
+| Live order write/read | `client.trade.*` | `zerodha`, `dhan` (auth) |
+| Live positions/holdings/balances/margin | `client.portfolio.*` | `zerodha`, `dhan` (auth) |
 | Symbol discovery | `client.list_symbols(source=...)` | per provider |
 
-**Not in bandl:** live WebSockets, US equities, async client. CoinDCX futures candles: no M3/H2/H6. Binance = USDT-M perpetuals only. Dhan option OHLCV intervals: only 1, 5, 15, 60 min.
+**Not in bandl:** live WebSockets, US equities, async client, crypto trading (binance/coindcx `client.trade`/`client.portfolio` not wired). CoinDCX futures candles: no M3/H2/H6. Binance = USDT-M perpetuals only. Dhan option OHLCV intervals: only 1, 5, 15, 60 min. Live trading covers **regular-variety orders only** — no AMO/CO/BO/iceberg/GTT/Forever/slicing/margin-preview/convert-position yet (see "Live trading — what's not yet wired").
 
 ---
 
@@ -82,7 +85,9 @@ Bandl(config?: BandlConfig)
 ├── .crypto          → _Facet           (default_source = config.default_crypto_provider, usually "binance")
 ├── .equity          → _Facet           (default_source = config.default_equity_provider, usually "zerodha")
 ├── .derivatives     → _DerivativesFacet (default_source = config.default_derivatives_provider, usually "dhan")
-├── .account         → AccountFacet
+├── .account         → AccountFacet     (history: orders/fills/ledger/pnl — read-only, past data)
+├── .trade           → TradeFacet       (live: place/modify/cancel + open orders/order/today's trades)
+├── .portfolio       → PortfolioFacet   (live: positions/holdings/balances/margin)
 ├── .get_ohlcv(...)                  # low-level; prefer facets
 ├── .get_ohlcv_dataframe(...)
 ├── .get_option_ohlcv(...)           # low-level; prefer client.derivatives
@@ -150,6 +155,82 @@ USER WANTS ACCOUNT DATA (orders/fills/PnL)?
 | binance / dhan | — | — | — | — | — | — |
 
 **Account `segment` filter** (kwarg on account methods): `spot_crypto`, `crypto_fno`, `equity_cash`, `equity_fno`, `commodity`.
+
+---
+
+## Live trading & portfolio (`client.trade` / `client.portfolio`)
+
+**Providers:** `zerodha`, `dhan` only (binance/coindcx have no trading provider wired). `source=` is **required** on every call — no multi-provider merge (unlike `client.account`, placing/cancelling only ever targets one broker).
+
+**Scope of this release — regular-variety orders only.** Not yet writable: AMO, cover orders (CO), bracket orders (BO), iceberg, GTT/Forever conditional orders, order slicing over the F&O freeze limit, margin preview, `convert_position`, and crypto leverage/margin-mode. These parse losslessly if they already exist in your account (e.g. an existing CO shows up fine in `get_open_orders`), they just can't be **created** via bandl yet.
+
+### `client.trade`
+
+```python
+client.trade.place_order(order: OrderRequest, *, source: str) -> Order
+client.trade.modify_order(order_id, *, source, price=None, trigger_price=None, quantity=None, validity=None) -> Order
+client.trade.cancel_order(order_id, *, source: str) -> Order
+client.trade.get_open_orders(*, source: str, symbol: str | None = None) -> list[Order]
+client.trade.get_order(order_id, *, source: str) -> Order
+client.trade.get_trades(*, source: str, symbol: str | None = None) -> list[AccountFill]   # today's fills
+client.trade.capabilities(source: str) -> TradeCapabilities
+client.trade.supports(source: str, capability: str) -> bool
+# + get_open_orders_dataframe / get_trades_dataframe
+```
+
+`OrderRequest` (from `bandl.models.trading`): pick **one** instrument form —
+`contract: OptionContract` (options, most robust) | `instrument_id: str` (native id, e.g. Dhan securityId; skips resolution) | `symbol: str` (+`exchange=`; resolved via scrip master / instruments CSV).
+Other fields: `side: OrderSide`, `order_type: OrderType` (`MARKET|LIMIT|STOP_LIMIT|STOP` — `STOP_LIMIT`=SL/STOP_LOSS has a price+trigger, `STOP`=SL-M/STOP_LOSS_MARKET is trigger-only), `quantity`, `price`, `trigger_price` (required for STOP/STOP_LIMIT), `product: ProductType` (`DELIVERY|INTRADAY|NORMAL|MARGIN|MTF`), `validity: Validity` (`DAY|IOC`), `variety` (must be `Variety.REGULAR` — anything else raises `UnsupportedCapabilityError`), `client_order_id` (kite `tag`≤20 / dhan `correlationId`≤30).
+
+```python
+from decimal import Decimal
+from bandl import Bandl, BandlConfig, ProviderSettings
+from bandl.models.account.types import OrderSide, OrderType
+from bandl.models.trading import OrderRequest, ProductType
+
+client = Bandl(BandlConfig(providers={
+    "zerodha": ProviderSettings(api_key="KEY", access_token="TOKEN"),
+}))
+order = client.trade.place_order(
+    OrderRequest(
+        symbol="RELIANCE", side=OrderSide.BUY, order_type=OrderType.LIMIT,
+        quantity=Decimal(1), price=Decimal("2500"), product=ProductType.DELIVERY,
+    ),
+    source="zerodha",
+)
+open_orders = client.trade.get_open_orders(source="zerodha")
+```
+
+Dhan options: pass `contract=OptionContract(...)` or `instrument_id=` (+`exchange=`); Dhan order write additionally **requires static-IP whitelisting** on the account (place/modify/cancel fail with `AuthenticationError`/`ProviderError` otherwise — this is a Dhan account setting, not a bandl bug).
+
+### `client.portfolio`
+
+```python
+client.portfolio.get_positions(*, source: str) -> list[Position]   # net book
+client.portfolio.get_holdings(*, source: str) -> list[Holding]
+client.portfolio.get_balances(*, source: str) -> list[Balance]
+client.portfolio.get_margin(*, source: str) -> MarginInfo
+client.portfolio.capabilities(source: str) -> PortfolioCapabilities
+# + get_positions_dataframe / get_holdings_dataframe / get_balances_dataframe
+```
+
+```python
+positions = client.portfolio.get_positions(source="zerodha")
+margin = client.portfolio.get_margin(source="dhan")
+```
+
+**Capability matrix (this release):**
+
+| capability | zerodha | dhan |
+|---|---|---|
+| place / modify / cancel (regular only) | ✅ | ✅ (static-IP whitelist required) |
+| get_open_orders / get_order / get_trades | ✅ | ✅ |
+| positions / holdings / balances / margin | ✅ | ✅ |
+| Dhan `get_holdings` with zero holdings | — | returns `[]` (Dhan's HTTP 500 `DH-1111` "No holdings available" is treated as empty, not an error) |
+| AMO / CO / BO / iceberg / GTT / Forever / slicing / margin preview / convert_position | ❌ not yet | ❌ not yet |
+| leverage / margin-mode (crypto) | n/a | n/a |
+
+**Errors:** reuses existing exceptions — `AuthenticationError` (missing/invalid creds, or Dhan static-IP not whitelisted), `UnsupportedCapabilityError` (source has no trading/portfolio provider, or `variety != REGULAR`), `ProviderError` (unsupported `product`/`validity`/`order_type` for that broker this release, missing `trigger_price` on a stop order, upstream failure).
 
 ---
 
@@ -443,6 +524,9 @@ pnl   = client.account.get_pnl(start, end, source="zerodha", prefer="auto")
 | Binance blocked in region | retry with `source="coindcx"` | coindcx | No |
 | CoinDCX empty candles | earlier `end`, or read `DataNotAvailableError` span | coindcx | No |
 | Compare brokers in one JSON | `export_analysis_bundle(start, end, sources=["coindcx","zerodha"])` | both | Yes |
+| Place a live limit order | `client.trade.place_order(OrderRequest(...), source="zerodha")` | zerodha/dhan | Yes |
+| Check today's open orders | `client.trade.get_open_orders(source="zerodha")` | zerodha/dhan | Yes |
+| Check live positions/holdings/margin | `client.portfolio.get_positions(source=...)` / `get_holdings` / `get_margin` | zerodha/dhan | Yes |
 | IST display | convert UTC timestamps (see below) | — | — |
 
 ### Recipe: single symbol daily crypto
@@ -608,6 +692,12 @@ bandl does **not** auto-load `.env`; agents must read env and pass `ProviderSett
 | Zerodha **historical** orders/fills for past months | **Not available** | broker statements; holdings snapshot only |
 | Equity/index OHLCV via Dhan | **Not wired** (options only) | use `zerodha` for equity/index |
 | US equities | **Not implemented** | — |
+| Crypto trading (binance/coindcx `client.trade`/`client.portfolio`) | **Not implemented** | market data + account history only for crypto |
+| AMO / cover (CO) / bracket (BO) / iceberg orders (write) | **Not implemented** | place a `REGULAR` order; CO/BO/AMO orders already on your account still read fine via `get_open_orders`/`get_order` |
+| GTT / Forever conditional orders | **Not implemented** | place/monitor manually via broker app |
+| Order slicing over F&O freeze limit | **Not implemented** | split into multiple `REGULAR` orders yourself |
+| Margin preview (`preview_margin`) / `convert_position` | **Not implemented** | check margin via broker app before placing |
+| Crypto leverage / margin-mode set | **Not implemented** | set via broker app |
 
 ---
 

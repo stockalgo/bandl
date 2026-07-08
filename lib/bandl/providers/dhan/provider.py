@@ -20,7 +20,9 @@ from bandl.providers.dhan.common import (
     INTRADAY_INTERVALS,
     OPTION_INSTRUMENT,
 )
+from bandl.providers.dhan.portfolio import DhanPortfolioMixin
 from bandl.providers.dhan.scrip import ScripMaster
+from bandl.providers.dhan.trading import DhanTradingMixin
 
 
 def _epoch_to_utc(epoch: float) -> datetime:
@@ -36,7 +38,7 @@ def _dec(value: Any) -> Decimal | None:
         return None
 
 
-class DhanProvider:
+class DhanProvider(DhanTradingMixin, DhanPortfolioMixin):
     """Dhan HQ adapter. Spans MCX commodity, NSE/BSE F&O, equity."""
 
     provider_id = "dhan"

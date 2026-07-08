@@ -18,6 +18,8 @@ from bandl.models.market.types import AssetType, Interval
 from bandl.providers.equity.zerodha.account import ZerodhaAccountMixin
 from bandl.providers.equity.zerodha.common import KITE_API
 from bandl.providers.equity.zerodha.common import parse_kite_timestamp as _parse_kite_timestamp
+from bandl.providers.equity.zerodha.portfolio import ZerodhaPortfolioMixin
+from bandl.providers.equity.zerodha.trading import ZerodhaTradingMixin
 
 # Kite public instruments CSV paths; reject odd tokens to avoid path injection.
 KITE_EXCHANGES: frozenset[str] = frozenset(
@@ -55,7 +57,7 @@ def _normalize_kite_exchange(exchange: str) -> str:
     return ex
 
 
-class ZerodhaProvider(ZerodhaAccountMixin):
+class ZerodhaProvider(ZerodhaAccountMixin, ZerodhaTradingMixin, ZerodhaPortfolioMixin):
     provider_id = "zerodha"
 
     def __init__(self, config: BandlConfig, settings: ProviderSettings | None = None) -> None:

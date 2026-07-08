@@ -18,6 +18,9 @@ EXCHANGE_SEGMENT: dict[str, str] = {
     "BCD": "BSE_CURRENCY",
 }
 
+# Dhan exchangeSegment -> bandl exchange code (reverse of EXCHANGE_SEGMENT).
+SEGMENT_TO_EXCHANGE: dict[str, str] = {v: k for k, v in EXCHANGE_SEGMENT.items()}
+
 # Dhan instrument enums for option contracts, keyed by bandl exchange.
 OPTION_INSTRUMENT: dict[str, str] = {
     "NFO": "OPTIDX",  # also OPTSTK; resolved per scrip row
