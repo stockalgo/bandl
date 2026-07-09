@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 import pandas as pd
@@ -13,8 +15,9 @@ from bandl.core.capabilities import AccountCapabilities
 from bandl.core.dataframe import models_to_dataframe
 from bandl.core.provider import AccountHistoryProvider
 from bandl.exceptions import BandlError, ConfigurationError, UnsupportedCapabilityError
-from bandl.models.account import AccountFill, AccountOrder, LedgerEntry, PnLRecord
-from bandl.models.account.types import PnLGranularity
+from bandl.models.account import AccountFill, AccountOrder, LedgerEntry, PnLProvenance, PnLRecord
+from bandl.models.account.base import make_dedup_key
+from bandl.models.account.types import PnLConfidence, PnLGranularity, PnLSourceType
 
 
 def _to_dataframe(rows: list[Any]) -> pd.DataFrame:
@@ -26,6 +29,33 @@ def _merge_by_dedup(rows: list[Any]) -> list[Any]:
     for row in rows:
         seen[row.dedup_key] = row
     return list(seen.values())
+
+
+def _sum_optional(values: Iterable[Decimal | None]) -> Decimal | None:
+    """Sum non-``None`` values; ``None`` only if every value was ``None``."""
+    present = [v for v in values if v is not None]
+    if not present:
+        return None
+    return sum(present, Decimal(0))
+
+
+def _effective_total(r: PnLRecord) -> Decimal | None:
+    if r.total_pnl is not None:
+        return r.total_pnl
+    if r.realized_pnl is not None or r.unrealized_pnl is not None:
+        return (r.realized_pnl or Decimal(0)) + (r.unrealized_pnl or Decimal(0))
+    return None
+
+
+_CONFIDENCE_RANK: dict[str, int] = {
+    PnLConfidence.LOW: 0,
+    PnLConfidence.MEDIUM: 1,
+    PnLConfidence.HIGH: 2,
+}
+
+
+def _lowest_confidence(confidences: list[Any]) -> str:
+    return min(confidences, key=lambda c: _CONFIDENCE_RANK.get(c, 1))
 
 
 @dataclass
@@ -138,8 +168,13 @@ class AccountFacet:
         granularity: str = PnLGranularity.SYMBOL,
         prefer: str = "auto",
         reconcile: bool = False,
+        scope: str | None = None,
         **kwargs: Any,
     ) -> list[PnLRecord]:
+        """``scope``: ``None`` (default) excludes day-book rows — safe to sum.
+        Pass ``"day"``/``"net"``/``"holding"`` to isolate one book, or ``"all"``
+        for every row. See ``PnLRecord.scope`` / ``zero_avg_price_artifact``.
+        """
         filters = self._filters(start, end, **kwargs)
         rows: list[PnLRecord] = []
         for _, prov in self._providers_for(source):
@@ -149,12 +184,83 @@ class AccountFacet:
                     granularity=granularity,
                     prefer=prefer,
                     reconcile=reconcile,
+                    scope=scope,
                 ),
             )
         return _merge_by_dedup(rows)
 
     def get_pnl_dataframe(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
         return _to_dataframe(self.get_pnl(*args, **kwargs))
+
+    def get_pnl_summary(
+        self,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        *,
+        source: str | None = None,
+        prefer: str = "auto",
+        reconcile: bool = True,
+        **kwargs: Any,
+    ) -> list[PnLRecord]:
+        """One row per symbol, safe to ``sum()`` — rolls up whatever ``get_pnl()``'s
+        default (day-book-excluded) scope returns, so callers never need to
+        hand-roll day/net/holding reconciliation themselves.
+        """
+        rows = self.get_pnl(
+            start,
+            end,
+            source=source,
+            prefer=prefer,
+            reconcile=reconcile,
+            scope=None,
+            **kwargs,
+        )
+        by_symbol: dict[str, list[PnLRecord]] = {}
+        for r in rows:
+            by_symbol.setdefault(r.symbol, []).append(r)
+
+        now = datetime.now(timezone.utc)
+        summary: list[PnLRecord] = []
+        for sym, sym_rows in sorted(by_symbol.items()):
+            realized = _sum_optional(r.realized_pnl for r in sym_rows)
+            unrealized = _sum_optional(r.unrealized_pnl for r in sym_rows)
+            total = _sum_optional(_effective_total(r) for r in sym_rows)
+            sources = sorted({r.source for r in sym_rows})
+            confidences = [r.provenance.confidence for r in sym_rows]
+            summary.append(
+                PnLRecord(
+                    pnl_id=f"summary:{sym}",
+                    granularity=PnLGranularity.SYMBOL,
+                    scope=None,
+                    realized_pnl=realized,
+                    unrealized_pnl=unrealized,
+                    total_pnl=total,
+                    currency=sym_rows[0].currency,
+                    symbol=sym,
+                    as_of=now,
+                    provenance=PnLProvenance(
+                        source_type=PnLSourceType.HYBRID
+                        if len({r.provenance.source_type for r in sym_rows}) > 1
+                        else sym_rows[0].provenance.source_type,
+                        includes_fees=all(r.provenance.includes_fees for r in sym_rows),
+                        confidence=_lowest_confidence(confidences),
+                        warnings=[
+                            f"Rollup of {len(sym_rows)} row(s): "
+                            f"{', '.join(sorted({r.pnl_id for r in sym_rows}))}",
+                        ],
+                    ),
+                    source=sources[0] if len(sources) == 1 else "multiple",
+                    segment=sym_rows[0].segment,
+                    symbol_native=sym_rows[0].symbol_native,
+                    provider_native={},
+                    dedup_key=make_dedup_key("summary", "pnl", sym),
+                    metadata={"contributing_pnl_ids": sorted({r.pnl_id for r in sym_rows})},
+                ),
+            )
+        return summary
+
+    def get_pnl_summary_dataframe(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
+        return _to_dataframe(self.get_pnl_summary(*args, **kwargs))
 
     def export_analysis_bundle(
         self,

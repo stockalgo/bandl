@@ -24,7 +24,6 @@ class AccountCapabilities(BaseModel):
     ledger: CapabilityDetail = Field(default_factory=CapabilityDetail)
     pnl_broker: CapabilityDetail = Field(default_factory=CapabilityDetail)
     pnl_computed: CapabilityDetail = Field(default_factory=CapabilityDetail)
-    positions: CapabilityDetail = Field(default_factory=CapabilityDetail)
 
     def supports(self, capability: str) -> bool:
         detail = getattr(self, capability, None)

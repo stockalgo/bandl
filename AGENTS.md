@@ -480,7 +480,7 @@ assert caps.supports("fills")
 
 **USE WHEN:** order history, executions, fees/funding, PnL.
 
-**COMMON PARAMS:** `start`, `end`, `source=None`, `symbol=`, `segment=`, `side=`, `status=`, `order_id=`, `limit=`. `get_pnl` adds `granularity=` (`trade`|`symbol`|`day`|`portfolio`), `prefer=` (`auto`|`broker`|`computed`|`hybrid`), `reconcile=False`.
+**COMMON PARAMS:** `start`, `end`, `source=None`, `symbol=`, `segment=`, `side=`, `status=`, `order_id=`, `limit=`. `get_pnl` adds `granularity=` (`trade`|`symbol`|`day`|`portfolio`), `prefer=` (`auto`|`broker`|`computed`|`hybrid`), `reconcile=False`, `scope=` (Zerodha only — see below).
 
 **RETURNS:** `list[AccountOrder]` / `list[AccountFill]` / `list[LedgerEntry]` / `list[PnLRecord]` (or DataFrames)
 
@@ -494,6 +494,20 @@ pnl   = client.account.get_pnl(start, end, source="zerodha", prefer="auto")
 ```
 
 **NOTES:** Zerodha orders/fills = **current session only**; holdings PnL ≈ lifetime snapshot, not arbitrary past months.
+
+**⚠️ Zerodha `get_pnl` day/net/holding scope — do not naively `sum()` without reading this:**
+Kite's `/portfolio/positions` returns two books, `net` (true running position economics) and `day` (today's session view — a position squared off intraday is costed against a **zero average price**, which can invert the sign of its reported pnl). `PnLRecord.scope` (`"day"|"net"|"holding"|None`) tags which book a row came from; rows with `zero_avg_price_artifact=True` are exactly the ones a zero-avg-price day-book row can fabricate.
+
+- `get_pnl(..., source="zerodha")` **default** returns `net` + `holding` scope only (day-book excluded) — **safe to `sum()`**.
+- Pass `scope="day"` to see Kite's day-book view; `scope="net"` / `scope="holding"` to isolate one book; `scope="all"` for everything.
+- **Never** mix `scope="day"` rows into a sum with `net`/`holding` rows — that's the exact bug this default guards against.
+- Prefer `client.account.get_pnl_summary(source="zerodha")` over hand-rolling this: it returns **one row per symbol**, already rolled up from the safe (day-excluded) scope — just sum `total_pnl` across the returned rows.
+
+```python
+# safe: one number per symbol, no day/net ambiguity to reason about
+summary = client.account.get_pnl_summary(source="zerodha")
+portfolio_total = sum(r.total_pnl for r in summary if r.total_pnl is not None)
+```
 
 ---
 
@@ -521,6 +535,7 @@ pnl   = client.account.get_pnl(start, end, source="zerodha", prefer="auto")
 | What expiries for an underlying | `client.derivatives.list_expiries("GOLDM", source="dhan", exchange="MCX")` | dhan | Yes |
 | Live option chain for a expiry | `client.derivatives.get_option_chain("GOLDM", expiry=date(...), source="dhan", exchange="MCX")` | dhan | Yes |
 | My CoinDCX futures PnL last month | `capabilities("coindcx")` then `get_pnl(..., source="coindcx", segment="crypto_fno")` | coindcx | Yes |
+| Total Zerodha pnl, safe to sum | `client.account.get_pnl_summary(source="zerodha")` — never sum raw `get_pnl(scope="all")` rows | zerodha | Yes |
 | Binance blocked in region | retry with `source="coindcx"` | coindcx | No |
 | CoinDCX empty candles | earlier `end`, or read `DataNotAvailableError` span | coindcx | No |
 | Compare brokers in one JSON | `export_analysis_bundle(start, end, sources=["coindcx","zerodha"])` | both | Yes |
