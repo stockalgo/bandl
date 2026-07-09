@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from bandl.models.account.base import AccountEntityBase
 from bandl.models.account.types import PnLConfidence, PnLSourceType
+
+PnLScope = Literal["day", "net", "holding"]
 
 
 class PnLProvenance(BaseModel):
@@ -36,3 +38,15 @@ class PnLRecord(AccountEntityBase):
     as_of: datetime
     provenance: PnLProvenance
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    # Which broker "book" this row's economics come from. ``None`` for
+    # computed/FIFO rows and aggregates, which have no book ambiguity.
+    # Callers must not blend "day" rows with "net"/"holding" rows in a sum —
+    # a Kite day-book row for a position closed today is costed against a
+    # zero average price and can show a fabricated sign-inverted number.
+    scope: PnLScope | None = None
+    # True when this row's economics are anchored to a zero average price
+    # because the underlying position was fully squared off intraday
+    # (Kite's day-book convention) — a strong signal not to sum it in with
+    # net/holding pnl.
+    zero_avg_price_artifact: bool = False

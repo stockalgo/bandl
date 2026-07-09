@@ -311,6 +311,7 @@ class CoinDCXAccountMixin:
         granularity: str = PnLGranularity.SYMBOL,
         prefer: str = "auto",
         reconcile: bool = False,
+        scope: str | None = None,  # no day/net ambiguity here; kept for uniform facet call
     ) -> list[PnLRecord]:
         if not filters.start or not filters.end:
             raise ProviderError(self.provider_id, "get_pnl requires start and end on filters")

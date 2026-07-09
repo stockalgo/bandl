@@ -79,7 +79,12 @@ class ZerodhaAccountMixin:
                 supported=True,
                 max_history_days=1,
                 pagination="snapshot",
-                notes=["GET /portfolio/positions unrealized/realized fields (day snapshot)"],
+                notes=[
+                    "GET /portfolio/positions unrealized/realized fields (net + day books)",
+                    "get_pnl() defaults to scope=net+holding (safe to sum); pass "
+                    "scope='day' or scope='all' to see Kite's day-book view — day rows "
+                    "for positions squared off intraday carry zero_avg_price_artifact=True",
+                ],
             ),
             pnl_computed=CapabilityDetail(
                 supported=True,
@@ -282,7 +287,20 @@ class ZerodhaAccountMixin:
         granularity: str = PnLGranularity.SYMBOL,
         prefer: str = "auto",
         reconcile: bool = False,
+        scope: str | None = None,
     ) -> list[PnLRecord]:
+        """``scope``: ``None`` (default) returns net + holding rows only — safe to
+        sum. Pass ``"day"`` for Kite's day-book view, ``"net"``/``"holding"`` to
+        isolate one book, or ``"all"`` for every row including day-book. Day-book
+        rows for positions squared off intraday are costed against a zero average
+        price (Kite convention) and carry ``zero_avg_price_artifact=True`` — never
+        blend them with net/holding pnl in a sum.
+        """
+        if scope is not None and scope not in ("net", "day", "holding", "all"):
+            raise ProviderError(
+                self.provider_id,
+                f"Invalid scope={scope!r}; expected one of: net, day, holding, all",
+            )
         caps = self.account_capabilities()
         broker_rows: list[PnLRecord] = []
         seg_filter = (filters.segment or "").lower() if filters.segment else ""
@@ -310,6 +328,7 @@ class ZerodhaAccountMixin:
                             PnLRecord(
                                 pnl_id=f"broker:holding:{sym}",
                                 granularity=granularity,
+                                scope="holding",
                                 total_pnl=Decimal(str(pnl_val)) if pnl_val is not None else None,
                                 currency="INR",
                                 symbol=sym,
@@ -367,10 +386,27 @@ class ZerodhaAccountMixin:
                             unreal = row.get("unrealised")
                             real = row.get("realised")
                             total = row.get("pnl")
+                            avg_price = row.get("average_price")
+                            zero_avg_artifact = book == "day" and (
+                                avg_price is None or Decimal(str(avg_price)) == 0
+                            )
+                            row_warnings = [
+                                f"Snapshot from /portfolio/positions ({book}); "
+                                "session/day scope — not full calendar-month history",
+                            ]
+                            if zero_avg_artifact:
+                                row_warnings.append(
+                                    "Day-book row for a position squared off intraday — Kite "
+                                    "costs this against a zero average price; the pnl fields "
+                                    "here can be sign-inverted vs. true economics. Do not sum "
+                                    "with net/holding scope rows.",
+                                )
                             broker_rows.append(
                                 PnLRecord(
                                     pnl_id=f"broker:pos:{book}:{sym}",
                                     granularity=granularity,
+                                    scope=book,
+                                    zero_avg_price_artifact=zero_avg_artifact,
                                     realized_pnl=Decimal(str(real)) if real is not None else None,
                                     unrealized_pnl=Decimal(str(unreal))
                                     if unreal is not None
@@ -382,11 +418,10 @@ class ZerodhaAccountMixin:
                                     provenance=PnLProvenance(
                                         source_type=PnLSourceType.BROKER,
                                         includes_fees=False,
-                                        confidence=PnLConfidence.MEDIUM,
-                                        warnings=[
-                                            f"Snapshot from /portfolio/positions ({book}); "
-                                            "session/day scope — not full calendar-month history",
-                                        ],
+                                        confidence=PnLConfidence.LOW
+                                        if zero_avg_artifact
+                                        else PnLConfidence.MEDIUM,
+                                        warnings=row_warnings,
                                     ),
                                     source=self.provider_id,
                                     segment=seg,
@@ -400,20 +435,35 @@ class ZerodhaAccountMixin:
                                 ),
                             )
 
+        if scope == "all":
+            pass
+        elif scope in ("net", "day", "holding"):
+            broker_rows = [r for r in broker_rows if r.scope == scope]
+        else:
+            # default: net + holding only — day-book rows are excluded because
+            # they are not safe to sum alongside net/holding (see zero_avg_price_artifact).
+            broker_rows = [r for r in broker_rows if r.scope != "day"]
+
         computed_rows: list[PnLRecord] = []
         if prefer in ("auto", "computed", "hybrid") and caps.pnl_computed.supported:
             fills = self.get_fills(filters)
-            ledger = []
+            ledger: list[LedgerEntry] = []
+            computed_warnings = ["Session-limited fills; historical PnL may be incomplete"]
             try:
                 ledger = self.get_ledger_entries(filters)
             except UnsupportedCapabilityError:
                 pass
+            except ProviderError as err:
+                computed_warnings.append(
+                    f"Ledger/charges enrichment failed upstream ({err}); realized pnl "
+                    "excludes fees for this call — degraded, not crashed",
+                )
             computed_rows = compute_pnl_from_fills(
                 fills,
                 ledger=ledger,
                 source=self.provider_id,
                 granularity=granularity,
-                warnings=["Session-limited fills; historical PnL may be incomplete"],
+                warnings=computed_warnings,
             )
 
         if broker_rows and computed_rows and reconcile:

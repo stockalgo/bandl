@@ -80,6 +80,7 @@ class AccountHistoryProvider(Protocol):
         granularity: str,
         prefer: str = "auto",
         reconcile: bool = False,
+        scope: str | None = None,
     ) -> list[PnLRecord]: ...
 
 
