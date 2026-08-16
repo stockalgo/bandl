@@ -51,7 +51,7 @@ bandl is **sync HTTP only** — no WebSockets, no async client.
 | Live positions/holdings/balances/margin | `client.portfolio.*` | `zerodha`, `dhan` (auth) |
 | Symbol discovery | `client.list_symbols(source=...)` | per provider |
 
-**Not in bandl:** live WebSockets, US equities, async client, crypto trading (binance/coindcx `client.trade`/`client.portfolio` not wired). CoinDCX futures candles: no M3/H2/H6. Binance = USDT-M perpetuals only. Dhan option OHLCV intervals: only 1, 5, 15, 60 min. Live trading covers **regular-variety orders only** — no AMO/CO/BO/iceberg/GTT/Forever/slicing/margin-preview/convert-position yet (see "Live trading — what's not yet wired").
+**Not in bandl:** live WebSockets, US equities, async client, crypto trading (binance/coindcx `client.trade`/`client.portfolio` not wired). CoinDCX futures candles: no M3/H2/H6. Binance = USDT-M perpetuals only. Dhan option OHLCV intervals: only 1, 5, 15, 60 min. Generic Dhan OHLCV for equity, index, futures, commodity futures, continuous futures, and rolling expired options is not wired in this release; use the Dhan instrument-resolution recipes below when adding or validating that surface. Live trading covers **regular-variety orders only** — no AMO/CO/BO/iceberg/GTT/Forever/slicing/margin-preview/convert-position yet (see "Live trading — what's not yet wired").
 
 ---
 
@@ -120,11 +120,14 @@ USER WANTS MARKET CANDLES?
 │     - coindcx → market_data/candlesticks?pcode=f + active_instruments
 ├─ Indian stock or index (RELIANCE, NIFTY)
 │  └─ source="zerodha" + ZERODHA_API_KEY + ZERODHA_ACCESS_TOKEN
+│     - Dhan raw API can serve these with securityId/exchangeSegment/instrument,
+│       but generic Dhan OHLCV is not wired in bandl yet.
 └─ Option contract (GOLDM…CE, NIFTY…PE, F&O or MCX)
    └─ client.derivatives.get_ohlcv(symbol_or_contract, interval, ..., source="dhan", exchange="MCX"|"NFO")
       - DHAN_CLIENT_ID (→ api_key) + DHAN_ACCESS_TOKEN (JWT → access_token)
       - Active contract → symbol string auto-resolves via Dhan scrip master
-      - EXPIRED contract dropped from scrip → pass instrument_id="<native securityId>"
+      - EXPIRED exact contract → pass instrument_id="<native securityId>" only if known/cached
+      - EXPIRED rolling options → Dhan raw API supports /charts/rollingoption; not wired in bandl yet
 
 USER WANTS ACCOUNT DATA (orders/fills/PnL)?
 ├─ CoinDCX (spot + USDT futures account)
@@ -144,7 +147,7 @@ USER WANTS ACCOUNT DATA (orders/fills/PnL)?
 | **binance** | spot + **USDT-M perp** | `get_ohlcv`, `list_symbols`, `get_24hr_tickers` (futures) | — | none (public) | spot & futures: M1–MO1 (same enum) | `BTCUSDT` | Spot: `api.binance.com`; futures: `fapi.binance.com`. Geo **451** → coindcx |
 | **coindcx** | spot + **futures perp** | `get_ohlcv`, `list_symbols`, `get_24hr_tickers` (futures) | orders, fills, ledger, pnl | OHLCV public; account: keys | spot: all intervals; futures: M1,M5,M15,M30,H1,H4,H8,D1,D3,W1,MO1 (**no M3/H2/H6**) | spot `B-BTC_USDT`; futures pair + `pcode=f` | Spot candles lag; futures `from`/`to` in **seconds** |
 | **zerodha** | NSE/BSE equity, indices | `get_ohlcv`, `list_symbols` | orders, fills, ledger, pnl | api_key + access_token | M1–M30,H1; H2/H4→60m; D1/W1/MO1→day | `RELIANCE`, `NIFTY50`; index API name `NIFTY 50` | Token expires daily; orders/trades = **session only** |
-| **dhan** | **options** (NSE/BSE F&O, MCX commodity) | `get_option_ohlcv`, `list_expiries`, `get_option_chain` | — | api_key (client id) + access_token (JWT) | **M1, M5, M15, H1 only** (1/5/15/60 min) | `GOLDM26JUN145000CE`; or `OptionContract(...)` | Expired contracts leave scrip master → use `instrument_id`; intraday OHLCV omits OI |
+| **dhan** | **options** (NSE/BSE F&O, MCX commodity) | `get_option_ohlcv`, `list_expiries`, `get_option_chain` | — | api_key (client id) + access_token (JWT) | **M1, M5, M15, H1 only** (1/5/15/60 min) | `GOLDM26JUN145000CE`; or `OptionContract(...)` | Active options resolve from scrip master. Expired exact options need a cached/known `instrument_id`; rolling expired options are raw API only in this release |
 
 ### Account capability flags (call `client.account.capabilities(source)`)
 
@@ -265,6 +268,62 @@ Zerodha: pass `exchange="NSE"` via kwargs. Dhan options: pass `exchange="MCX"` (
 
 ---
 
+## Dhan instrument resolution
+
+Use this section when a user specifically asks for Dhan candles or when adding Dhan generic OHLCV support. Do not research Dhan symbol formats at runtime; resolve from the Dhan instrument master first.
+
+**Instrument master:**
+
+```text
+https://images.dhan.co/api-data/api-scrip-master-detailed.csv
+```
+
+Use the detailed CSV for manual resolution. Important columns:
+
+```text
+EXCH_ID, SEGMENT, SECURITY_ID, INSTRUMENT,
+UNDERLYING_SECURITY_ID, UNDERLYING_SYMBOL, SYMBOL_NAME,
+DISPLAY_NAME, SM_EXPIRY_DATE, STRIKE_PRICE, OPTION_TYPE
+```
+
+Map CSV rows to Dhan candle request fields:
+
+| CSV filter | `exchangeSegment` | `instrument` |
+|------------|-------------------|--------------|
+| `EXCH_ID=NSE`, `SEGMENT=E`, `INSTRUMENT=EQUITY` | `NSE_EQ` | `EQUITY` |
+| `EXCH_ID=BSE`, `SEGMENT=E`, `INSTRUMENT=EQUITY` | `BSE_EQ` | `EQUITY` |
+| `EXCH_ID=NSE`, `SEGMENT=D`, `INSTRUMENT=FUTIDX/FUTSTK` | `NSE_FNO` | row `INSTRUMENT` |
+| `EXCH_ID=BSE`, `SEGMENT=D`, `INSTRUMENT=FUTIDX/FUTSTK` | `BSE_FNO` | row `INSTRUMENT` |
+| `EXCH_ID=NSE`, `SEGMENT=D`, `INSTRUMENT=OPTIDX/OPTSTK` | `NSE_FNO` | row `INSTRUMENT` |
+| `EXCH_ID=BSE`, `SEGMENT=D`, `INSTRUMENT=OPTIDX/OPTSTK` | `BSE_FNO` | row `INSTRUMENT` |
+| `EXCH_ID=MCX`, `SEGMENT=M`, `INSTRUMENT=FUTCOM` | `MCX_COMM` | `FUTCOM` |
+| `EXCH_ID=MCX`, `SEGMENT=M`, `INSTRUMENT=OPTFUT` | `MCX_COMM` | `OPTFUT` |
+| Dhan index reference, e.g. NIFTY/SENSEX underlying id | `IDX_I` | `INDEX` |
+
+Resolution recipes:
+
+| Family | How to resolve `SECURITY_ID` |
+|--------|-------------------------------|
+| Equity stock | Filter `EXCH_ID` to `NSE` or `BSE`, `SEGMENT=E`, `INSTRUMENT=EQUITY`, then match `UNDERLYING_SYMBOL` or `SYMBOL_NAME`. |
+| NSE/BSE index chart | Use Dhan's index security id for the index. Option rows expose index `UNDERLYING_SECURITY_ID` for underlyings such as `NIFTY`, `BANKNIFTY`, and `SENSEX`; use `exchangeSegment=IDX_I`, `instrument=INDEX`, not the option row's F&O segment. |
+| NSE/BSE futures | Filter `EXCH_ID=NSE/BSE`, `SEGMENT=D`, `INSTRUMENT=FUTIDX` or `FUTSTK`, then match `UNDERLYING_SYMBOL` and `SM_EXPIRY_DATE`. |
+| MCX commodity futures | Filter `EXCH_ID=MCX`, `SEGMENT=M`, `INSTRUMENT=FUTCOM`, then match `UNDERLYING_SYMBOL` and `SM_EXPIRY_DATE`. |
+| MCX commodity continuous futures | Dhan raw daily historical candles support continuous-style futures through Dhan's futures parameters; intraday expired/continuous futures are not available. Do not represent this as exact old-contract intraday data. |
+| Active index/equity option | Filter `EXCH_ID=NSE/BSE`, `SEGMENT=D`, `INSTRUMENT=OPTIDX/OPTSTK`, then match `UNDERLYING_SYMBOL`, `SM_EXPIRY_DATE`, `STRIKE_PRICE`, `OPTION_TYPE`. Current bandl can usually auto-resolve this via `client.derivatives.get_ohlcv(...)`. |
+| Active MCX option | Filter `EXCH_ID=MCX`, `SEGMENT=M`, `INSTRUMENT=OPTFUT`, then match `UNDERLYING_SYMBOL`, `SM_EXPIRY_DATE`, `STRIKE_PRICE`, `OPTION_TYPE`. Current bandl can usually auto-resolve this via `client.derivatives.get_ohlcv(...)`. |
+| Expired exact option | Current Dhan CSV does not contain fully expired contracts. Exact expired charts require a cached old Dhan `SECURITY_ID` or another reliable stored mapping; then pass it as generic `instrument_id` where bandl supports native ids. |
+| Expired rolling option | Dhan raw `/charts/rollingoption` works for index, stock, and MCX rolling options. Use the underlying security id, `expiryFlag`, `expiryCode`, relative `strike` (`ATM`, `ATM+1`, `ATM-1`, ...), and `drvOptionType`. This is not exact old-contract lookup, and it is not wired in bandl yet. |
+
+Current bandl Dhan surface:
+
+- Active options: `client.derivatives.get_ohlcv_dataframe(symbol_or_contract, ..., source="dhan", exchange="MCX"|"NFO"|"BFO")`.
+- Expired exact options: same method plus `instrument_id="<known Dhan SECURITY_ID>"`.
+- Other Dhan candle families above are raw API validated/resolution-ready, but not exposed as a generic bandl OHLCV method in this release.
+
+For exact expired support going forward, cache the detailed CSV daily and key rows by `EXCH_ID`, `SEGMENT`, `INSTRUMENT`, `UNDERLYING_SYMBOL`, `SM_EXPIRY_DATE`, `STRIKE_PRICE`, and `OPTION_TYPE`.
+
+---
+
 ## Intervals
 
 `Interval` enum (`from bandl import Interval`):
@@ -343,7 +402,7 @@ df = client.crypto.get_ohlcv_dataframe("BTC/USDT", Interval.D1, start, end)
 
 **USE WHEN:** user wants option-contract OHLCV (F&O or MCX commodity), active or expired.
 
-**PARAMS:** `contract` (`str` canonical symbol **or** `OptionContract`), `interval=Interval.M1` (1/5/15/60 min only), `start=None`, `end=None`, `source="dhan"`, `exchange=None` (**required** for string symbols, e.g. `"MCX"`, `"NFO"`), `instrument_id=None` (native id; skips scrip lookup — use for expired contracts).
+**PARAMS:** `contract` (`str` canonical symbol **or** `OptionContract`), `interval=Interval.M1` (1/5/15/60 min only), `start=None`, `end=None`, `source="dhan"`, `exchange=None` (**required** for string symbols, e.g. `"MCX"`, `"NFO"`), `instrument_id=None` (native id; skips scrip lookup — use for expired exact contracts only when the old Dhan id is known/cached).
 
 **RETURNS:** `list[OHLCV]` (or DataFrame) — `symbol` is the canonical contract; `open_interest` present when the provider returns it (Dhan intraday omits OI).
 
@@ -371,7 +430,7 @@ c = OptionContract(underlying="GOLDM", expiry=date(2026, 7, 29),
                    strike=Decimal("145000"), option_type=OptionType.CALL, exchange="MCX")
 bars = client.derivatives.get_ohlcv(c, Interval.M1, source="dhan")
 
-# C) Expired contract (dropped from scrip master) → native instrument_id
+# C) Expired exact contract (dropped from current scrip master) → known/cached native instrument_id
 bars = client.derivatives.get_ohlcv(
     "GOLDM26JUN143500CE", Interval.M1,
     datetime(2026, 6, 26, tzinfo=timezone.utc),
@@ -380,7 +439,7 @@ bars = client.derivatives.get_ohlcv(
 )
 ```
 
-**ERRORS:** `SymbolNotFoundError` → contract not in scrip master (expired? pass `instrument_id=`); `ProviderError` → unsupported interval or upstream failure; `AuthenticationError` → set Dhan token; `UnsupportedCapabilityError` → `source` is not derivatives-capable (only `dhan`).
+**ERRORS:** `SymbolNotFoundError` → contract not in current scrip master (expired exact contract requires a known/cached `instrument_id`); `ProviderError` → unsupported interval or upstream failure; `AuthenticationError` → set Dhan token; `UnsupportedCapabilityError` → `source` is not derivatives-capable (only `dhan`).
 
 ---
 
@@ -531,7 +590,10 @@ portfolio_total = sum(r.total_pnl for r in summary if r.total_pnl is not None)
 | NIFTY 50 last 6 months | `client.equity.get_ohlcv_dataframe("NIFTY 50", Interval.D1, start, end, source="zerodha")` | zerodha | Yes |
 | RELIANCE daily bars | `client.equity.get_ohlcv_dataframe("RELIANCE", Interval.D1, start, end)` | zerodha | Yes |
 | GOLDM option 5-min candles | `client.derivatives.get_ohlcv_dataframe("GOLDM26JUL145000CE", Interval.M5, source="dhan", exchange="MCX")` | dhan | Yes |
-| Expired option minute data | `client.derivatives.get_ohlcv(sym, Interval.M1, start, end, source="dhan", exchange="MCX", instrument_id="<id>")` | dhan | Yes |
+| Active Dhan option by exact contract | Resolve from Dhan detailed CSV or pass the symbol to `client.derivatives.get_ohlcv_dataframe(...)` | dhan | Yes |
+| Expired exact option minute data | Requires cached/known old Dhan `SECURITY_ID`; pass `instrument_id="<id>"` | dhan | Yes |
+| Expired rolling option data | Raw Dhan `/charts/rollingoption`; not wired in bandl yet | dhan | Yes |
+| Dhan equity/index/futures/commodity candles | Resolve from Dhan detailed CSV; generic Dhan OHLCV not wired in bandl yet | dhan | Yes |
 | What expiries for an underlying | `client.derivatives.list_expiries("GOLDM", source="dhan", exchange="MCX")` | dhan | Yes |
 | Live option chain for a expiry | `client.derivatives.get_option_chain("GOLDM", expiry=date(...), source="dhan", exchange="MCX")` | dhan | Yes |
 | My CoinDCX futures PnL last month | `capabilities("coindcx")` then `get_pnl(..., source="coindcx", segment="crypto_fno")` | coindcx | Yes |
@@ -577,7 +639,8 @@ df = client.derivatives.get_ohlcv_dataframe(
     "GOLDM26JUL145000CE", Interval.M5, source="dhan", exchange="MCX",
 )
 
-# Expired contract — pass native instrument_id (look up once; scrip master drops it)
+# Expired exact contract — pass native instrument_id only if it is known/cached.
+# Current Dhan master drops fully expired contracts.
 bars = client.derivatives.get_ohlcv(
     "GOLDM26JUN143500CE", Interval.M1,
     datetime(2026, 6, 26, tzinfo=timezone.utc),
@@ -687,7 +750,7 @@ bandl does **not** auto-load `.env`; agents must read env and pass `ProviderSett
 | `AuthenticationError` | missing/invalid credentials (401/403) | set `ProviderSettings`; refresh Zerodha/Dhan token |
 | `GeoRestrictionError` | Binance HTTP 451 | `source="coindcx"` for crypto OHLCV |
 | `DataNotAvailableError` | range outside available data (CoinDCX lag) | narrow range; read error message for available span |
-| `SymbolNotFoundError` | bad symbol for provider | fix symbol; `list_symbols`; Zerodha `tradingsymbol=`/`instrument_token=`; Dhan expired → `instrument_id=` |
+| `SymbolNotFoundError` | bad symbol for provider | fix symbol; `list_symbols`; Zerodha `tradingsymbol=`/`instrument_token=`; Dhan expired exact contract → known/cached `instrument_id=` |
 | `UnsupportedCapabilityError` | feature not on provider | account: `capabilities()`; derivatives only on `dhan` |
 | `RateLimitError` | subclass of `ProviderError` (HTTP 429) | backoff and retry |
 | `ProviderError` | upstream failure / unsupported interval | read `[provider]` prefix; 4xx not retried |
@@ -705,7 +768,11 @@ bandl does **not** auto-load `.env`; agents must read env and pass `ProviderSett
 | Live WebSockets / streaming | **Not implemented** | poll `get_ohlcv` |
 | Async `await` client | **Not implemented** | sync calls only |
 | Zerodha **historical** orders/fills for past months | **Not available** | broker statements; holdings snapshot only |
-| Equity/index OHLCV via Dhan | **Not wired** (options only) | use `zerodha` for equity/index |
+| Equity/index OHLCV via Dhan | **Not wired** | resolve Dhan ids from detailed CSV when adding generic Dhan OHLCV; use `zerodha` today |
+| Dhan NSE/BSE futures OHLCV | **Not wired** | resolve `FUTIDX/FUTSTK` rows from detailed CSV when adding generic Dhan OHLCV |
+| Dhan MCX commodity futures OHLCV | **Not wired** | resolve `FUTCOM` rows from detailed CSV when adding generic Dhan OHLCV |
+| Dhan continuous commodity futures | **Not wired** | raw Dhan daily historical only; intraday expired/continuous futures not available |
+| Dhan expired rolling options | **Not wired** | raw `/charts/rollingoption`; exact expired options still need known old `SECURITY_ID` |
 | US equities | **Not implemented** | — |
 | Crypto trading (binance/coindcx `client.trade`/`client.portfolio`) | **Not implemented** | market data + account history only for crypto |
 | AMO / cover (CO) / bracket (BO) / iceberg orders (write) | **Not implemented** | place a `REGULAR` order; CO/BO/AMO orders already on your account still read fine via `get_open_orders`/`get_order` |
@@ -733,7 +800,10 @@ Package version: see `pyproject.toml` `project.version`.
 ## Quick capability answers (FAQ)
 
 **Q: Option candles, including expired contracts?**
-A: `client.derivatives.get_ohlcv_dataframe("GOLDM26JUL145000CE", Interval.M5, source="dhan", exchange="MCX")`. Expired → add `instrument_id="<native securityId>"`. Intervals: 1/5/15/60 min only.
+A: Active: `client.derivatives.get_ohlcv_dataframe("GOLDM26JUL145000CE", Interval.M5, source="dhan", exchange="MCX")`. Expired exact: add `instrument_id="<native SECURITY_ID>"` only if the old Dhan id is known or cached. Expired rolling options require Dhan raw `/charts/rollingoption` and are not wired in bandl yet. Intervals: 1/5/15/60 min only.
+
+**Q: How should agents find Dhan `SECURITY_ID` values?**
+A: Use `https://images.dhan.co/api-data/api-scrip-master-detailed.csv` and the "Dhan instrument resolution" section above. Do not guess ids. Current CSV does not contain fully expired exact option contracts; cache the detailed CSV daily if exact expired lookup is required later.
 
 **Q: Default provider for each facet?**
 A: `client.crypto`→binance, `client.equity`→zerodha, `client.derivatives`→dhan. Override with `source=` or `BandlConfig.default_*_provider`.
