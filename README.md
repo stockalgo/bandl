@@ -86,7 +86,9 @@ print(bars[-1].close, bars[-1].source)
 | `client.crypto` | `binance` | None | `BTC/USDT`, `ETHUSDT` |
 | `client.crypto` | `coindcx` | None | `BTCUSDT`, `ETHUSDT` |
 | `client.equity` | `zerodha` | Kite key + token | `RELIANCE`, `NIFTY 50`, `BANKNIFTY` |
+| `client.equity` | `breeze` | ICICI Breeze key + session | `RELIANCE`, `INFY` |
 | `client.derivatives` | `dhan` | Dhan id + JWT | `GOLDM26JUN145000CE`, `NIFTY26JAN24000PE` |
+| `client.derivatives` | `breeze` | ICICI Breeze key + session | `CRUDEOIL`, `GOLDM` options & futures |
 
 Every facet exposes the **same two calls** — `get_ohlcv(...)` and
 `get_ohlcv_dataframe(...)`. Pick a provider with `source="..."`, or rely on each

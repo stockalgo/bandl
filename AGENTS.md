@@ -148,6 +148,7 @@ USER WANTS ACCOUNT DATA (orders/fills/PnL)?
 | **coindcx** | spot + **futures perp** | `get_ohlcv`, `list_symbols`, `get_24hr_tickers` (futures) | orders, fills, ledger, pnl | OHLCV public; account: keys | spot: all intervals; futures: M1,M5,M15,M30,H1,H4,H8,D1,D3,W1,MO1 (**no M3/H2/H6**) | spot `B-BTC_USDT`; futures pair + `pcode=f` | Spot candles lag; futures `from`/`to` in **seconds** |
 | **zerodha** | NSE/BSE equity, indices | `get_ohlcv`, `list_symbols` | orders, fills, ledger, pnl | api_key + access_token | M1–M30,H1; H2/H4→60m; D1/W1/MO1→day | `RELIANCE`, `NIFTY50`; index API name `NIFTY 50` | Token expires daily; orders/trades = **session only** |
 | **dhan** | **options** (NSE/BSE F&O, MCX commodity) | `get_option_ohlcv`, `list_expiries`, `get_option_chain` | — | api_key (client id) + access_token (JWT) | **M1, M5, M15, H1 only** (1/5/15/60 min) | `GOLDM26JUN145000CE`; or `OptionContract(...)` | Active options resolve from scrip master. Expired exact options need a cached/known `instrument_id`; rolling expired options are raw API only in this release |
+| **breeze** | NSE/BSE equity, NFO/MCX options & futures | `get_ohlcv`, `get_option_ohlcv`, `list_symbols` | holdings, balances, margin (portfolio), place/modify/cancel (trade) | api_key + access_token (session) + optional api_secret | **S1, M1, M5, M30, D1** | `RELIANCE`, `CRUDEOIL` / `OptionContract` | 1s candles available on historical API v2; trading requires active session token |
 
 ### Account capability flags (call `client.account.capabilities(source)`)
 
