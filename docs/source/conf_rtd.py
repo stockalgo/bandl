@@ -19,12 +19,12 @@ sys.path.insert(0, os.path.abspath(r"../../lib"))
 
 # -- Project information -----------------------------------------------------
 
-project = "stolgo"
-copyright = "2020, stolgo developers"
-author = "stolgo developers"
+project = "bandl"
+copyright = "2026, bandl contributors"
+author = "bandl contributors"
 
 # The full version, including alpha/beta/rc tags
-release = "0.1.2"
+release = "0.7.0"
 
 
 # -- General configuration ---------------------------------------------------
