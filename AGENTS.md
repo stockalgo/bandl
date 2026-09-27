@@ -119,15 +119,17 @@ USER WANTS MARKET CANDLES?
 │     - binance → fapi.binance.com (USDT-M perpetuals)
 │     - coindcx → market_data/candlesticks?pcode=f + active_instruments
 ├─ Indian stock or index (RELIANCE, NIFTY)
-│  └─ source="zerodha" + ZERODHA_API_KEY + ZERODHA_ACCESS_TOKEN
-│     - Dhan raw API can serve these with securityId/exchangeSegment/instrument,
-│       but generic Dhan OHLCV is not wired in bandl yet.
-└─ Option contract (GOLDM…CE, NIFTY…PE, F&O or MCX)
-   └─ client.derivatives.get_ohlcv(symbol_or_contract, interval, ..., source="dhan", exchange="MCX"|"NFO")
-      - DHAN_CLIENT_ID (→ api_key) + DHAN_ACCESS_TOKEN (JWT → access_token)
-      - Active contract → symbol string auto-resolves via Dhan scrip master
-      - EXPIRED exact contract → pass instrument_id="<native securityId>" only if known/cached
-      - EXPIRED rolling options → Dhan raw API supports /charts/rollingoption; not wired in bandl yet
+│  ├─ source="zerodha" + ZERODHA_API_KEY + ZERODHA_ACCESS_TOKEN
+│  └─ source="breeze" + BREEZE_API_KEY + BREEZE_SESSION_TOKEN
+│     - Native support for NSE & BSE equities down to 1-second and 1-minute candles
+└─ Option contract / Commodity (GOLDM…CE, CRUDEOIL, NIFTY…PE, F&O or MCX)
+   ├─ source="dhan" + DHAN_CLIENT_ID (→ api_key) + DHAN_ACCESS_TOKEN (JWT → access_token)
+   │  - Active contract → symbol string auto-resolves via Dhan scrip master
+   │  - EXPIRED exact contract → pass instrument_id="<native securityId>" only if known/cached
+   │  - EXPIRED rolling options → Dhan raw API supports /charts/rollingoption; not wired in bandl yet
+   └─ source="breeze" + BREEZE_API_KEY + BREEZE_SESSION_TOKEN
+      - Historical options & futures OHLCV for MCX commodities & NFO indices
+      - Auto-resolves underlying symbols (e.g. CRUDEOIL -> CRUDE, GOLDM -> GOLDMI)
 
 USER WANTS ACCOUNT DATA (orders/fills/PnL)?
 ├─ CoinDCX (spot + USDT futures account)
@@ -136,6 +138,11 @@ USER WANTS ACCOUNT DATA (orders/fills/PnL)?
 └─ Zerodha (session orders/trades; holdings/positions snapshots)
    └─ source="zerodha" + Kite api_key + access_token
        → expect session-only fills; NOT full month history via API
+
+USER WANTS LIVE TRADING / PORTFOLIO?
+├─ Zerodha: Kite Connect (api_key + access_token) → regular orders, holdings, positions, margin
+├─ Dhan: DhanHQ v2 (api_key + access_token + static-IP whitelist) → regular orders, holdings, positions, margin
+└─ Breeze: ICICI Direct Breeze (api_key + session_token + secret_key) → regular orders, demat holdings, funds & margin
 ```
 
 ---
@@ -230,16 +237,17 @@ margin = client.portfolio.get_margin(source="dhan")
 
 **Capability matrix (this release):**
 
-| capability | zerodha | dhan |
-|---|---|---|
-| place / modify / cancel (regular only) | ✅ | ✅ (static-IP whitelist required) |
-| place_order_ack / modify_order_ack / cancel_order_ack | ✅ | ✅ |
-| get_open_orders / get_orders / get_order / get_trades | ✅ | ✅ |
-| get_order_history (state transitions) | ✅ | ❌ not supported by Dhan API (`UnsupportedCapabilityError`) |
-| positions / holdings / balances / margin | ✅ | ✅ |
-| Dhan `get_holdings` with zero holdings | — | returns `[]` (Dhan's HTTP 500 `DH-1111` "No holdings available" is treated as empty, not an error) |
-| AMO / CO / BO / iceberg / GTT / Forever / slicing / margin preview / convert_position | ❌ not yet | ❌ not yet |
-| leverage / margin-mode (crypto) | n/a | n/a |
+| capability | zerodha | dhan | breeze |
+|---|---|---|---|
+| place / modify / cancel (regular only) | ✅ | ✅ (static-IP whitelist required) | ✅ |
+| place_order_ack / modify_order_ack / cancel_order_ack | ✅ | ✅ | ✅ |
+| get_open_orders / get_orders / get_order | ✅ | ✅ | ✅ (recent 7-10d window per Breeze constraint) |
+| get_trades | ✅ | ✅ | ❌ not supported without stock/product filter (`UnsupportedCapabilityError`) |
+| get_order_history (state transitions) | ✅ | ❌ not supported by Dhan API (`UnsupportedCapabilityError`) | ✅ (via `/orderdetail`) |
+| positions / holdings / balances / margin | ✅ | ✅ | ✅ (holdings via `/dematholdings`, funds & margin via `/funds`) |
+| Dhan `get_holdings` with zero holdings | — | returns `[]` (Dhan's HTTP 500 `DH-1111` "No holdings available" is treated as empty, not an error) | — |
+| AMO / CO / BO / iceberg / GTT / Forever / slicing / margin preview / convert_position | ❌ not yet | ❌ not yet | ❌ not yet |
+| leverage / margin-mode (crypto) | n/a | n/a | n/a |
 
 **Errors:**
 - `InvalidOrderError`: Client-side validation failure (e.g., negative/non-finite quantity, fractional shares for equity/F&O, tag/correlationId too long, missing price/trigger).
@@ -339,6 +347,58 @@ For exact expired support going forward, cache the detailed CSV daily and key ro
 
 ---
 
+## ICICI Direct Breeze API
+
+Use this section when working with ICICI Direct Breeze for historical candles (equities, indices, MCX commodities, and derivatives), Demat portfolio holdings, cash/margin balances, and live trading.
+
+### 1. Acquiring Credentials & Session Token
+Breeze uses a session-based authentication model renewed daily:
+- **API Key (`api_key`) & Secret Key (`api_secret`)**: Registered via the [ICICI Direct Breeze Portal](https://api.icicidirect.com/apiuser/home).
+- **Session Token (`access_token`)**: Generated by logging into ICICI Direct:
+  1. Open browser URL: `https://api.icicidirect.com/apiuser/login?api_key=<YOUR_API_KEY>`
+  2. Complete 2FA login (user ID, password, TOTP).
+  3. Upon successful login, the browser redirects to the redirect URL registered in the Breeze App with `?apisession=<session_token>`.
+  4. Provide `<session_token>` as `access_token` in `ProviderSettings`.
+- **Account / User ID (`account_id`)**: Your ICICI Direct Login ID (e.g. `AI643823`).
+
+### 2. Request Signing & Headers (Automated by Bandl)
+Bandl implements pure zero-dependency HTTP signing:
+- `X-SessionToken`: Base64-encoded `user_id:session_token`.
+- `X-Timestamp`: UTC timestamp formatted as `YYYY-MM-DDTHH:MM:SS.000Z`.
+- `X-Checksum`: Header format `token <sha256_hex>`, where the SHA256 digest is calculated over `timestamp + json_body + secret_key`.
+- `X-AppKey` / `apikey`: App Key.
+
+### 3. Exchanges & Underlying Symbol Resolution
+Breeze expects specific `stock_code` formats for commodities and equities:
+- **Equities / Indices**: Pass canonical ticker (e.g. `RELIANCE`, `TCS`, `INFY`) with `exchange="NSE"` or `"BSE"`.
+- **Commodities (MCX)**: Bandl automatically translates generic commodity names into Breeze stock codes:
+  - `CRUDEOIL` / `CRUDE` → `CRUDE`
+  - `CRUDEOILM` / `CRUDMI` → `CRUDMI`
+  - `NATURALGAS` / `NATGAS` → `NATGAS`
+  - `NATGASM` / `NATGMI` → `NATGMI`
+  - `GOLD` → `GOLD`
+  - `GOLDM` / `GOLDMI` → `GOLDMI`
+  - `SILVER` → `SILVER`
+  - `SILVERM` / `SILMIN` → `SILMIN`
+  - `COPPER` → `COPPER`
+  - `ZINC` → `ZINC`
+- **Options (`OptionContract`)**: Automatically formats expiry date (`YYYY-MM-DDT06:00:00.000Z`), right (`call` / `put`), strike price, and underlying code for the Breeze v2 historical endpoint.
+
+### 4. Supported Intervals
+Historical charts v2 endpoint supports:
+- `1second` (pass as string `"1second"` or via native interval)
+- `1minute` (`Interval.M1` or `"1m"`)
+- `5minute` (`Interval.M5` or `"5m"`)
+- `30minute` (`Interval.M30` or `"30m"`)
+- `1day` (`Interval.D1` or `"1d"`)
+
+### 5. Live Portfolio & Trading
+- **Holdings**: Fetched via `/dematholdings` and mapped to `Holding` (ISIN, quantity, blocked quantity).
+- **Balances & Margin**: Fetched via `/funds`. `available` maps to `unallocated_balance`, `used` aggregates allocated amounts across equity, F&O, commodity, currency, and trade blocks.
+- **Orders**: `place_order`, `modify_order`, and `cancel_order` accept regular `OrderRequest` (Market, Limit, Stop-Loss) across `cash` (delivery), `margin` (intraday), `futures`, and `options`.
+
+---
+
 ## Intervals
 
 `Interval` enum (`from bandl import Interval`):
@@ -361,6 +421,7 @@ For exact expired support going forward, cache the detailed CSV daily and key ro
 | coindcx | M3 | — |
 | zerodha | H6, H8, D3 | H2, H4 → `60minute`; W1, MO1 → `day` |
 | dhan (options) | M3, M30, H2, H4, H6, H8, D1, D3, W1, MO1 | — (only M1, M5, M15, H1) |
+| breeze | M3, M15, H1, H2, H4, H6, H8, D3, W1, MO1 | native 1s, 1m, 5m, 30m, 1d |
 | binance | — | all listed supported |
 
 Pass `Interval.H1` or a string like `"1h"`.
