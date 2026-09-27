@@ -86,7 +86,9 @@ print(bars[-1].close, bars[-1].source)
 | `client.crypto` | `binance` | None | `BTC/USDT`, `ETHUSDT` |
 | `client.crypto` | `coindcx` | None | `BTCUSDT`, `ETHUSDT` |
 | `client.equity` | `zerodha` | Kite key + token | `RELIANCE`, `NIFTY 50`, `BANKNIFTY` |
+| `client.equity` | `breeze` | ICICI Breeze key + session | `RELIANCE`, `INFY` |
 | `client.derivatives` | `dhan` | Dhan id + JWT | `GOLDM26JUN145000CE`, `NIFTY26JAN24000PE` |
+| `client.derivatives` | `breeze` | ICICI Breeze key + session | `CRUDEOIL`, `GOLDM` options & futures |
 
 Every facet exposes the **same two calls** — `get_ohlcv(...)` and
 `get_ohlcv_dataframe(...)`. Pick a provider with `source="..."`, or rely on each
@@ -155,6 +157,83 @@ bars = client.derivatives.get_ohlcv(
     datetime(2026, 6, 27, tzinfo=timezone.utc),
     source="dhan", exchange="MCX", instrument_id="570800",
 )
+```
+
+### Indian equities, derivatives & commodities (ICICI Direct Breeze)
+
+ICICI Direct Breeze provides historical OHLCV across equities, indices, and derivatives (including MCX commodities down to 1-second candles), along with Demat portfolio holdings and live order execution.
+
+#### 1. Obtaining API credentials & Session token
+- Register/login on the [ICICI Direct Breeze API Portal](https://api.icicidirect.com/apiuser/home).
+- Create an app to receive your **App Key / API Key** (`api_key`) and **Secret Key** (`api_secret`).
+- To generate your daily session token:
+  1. Open: `https://api.icicidirect.com/apiuser/login?api_key=<YOUR_API_KEY>` in your browser.
+  2. Log in with your ICICI Direct credentials and TOTP.
+  3. After login, your browser redirects to your registered Redirect URL with `?apisession=<session_token>`.
+  4. Pass `<session_token>` as `access_token` and your ICICI User ID as `account_id` in `ProviderSettings`.
+
+#### 2. Configuration & Market Data
+```python
+from datetime import date, datetime, timezone
+from decimal import Decimal
+from bandl import Bandl, BandlConfig, Interval, ProviderSettings
+from bandl.models.market import OptionContract, OptionType
+
+client = Bandl(BandlConfig(providers={
+    "breeze": ProviderSettings(
+        api_key="your_app_key",
+        api_secret="your_secret_key",
+        access_token="your_daily_session_token",
+        account_id="your_user_id",
+    ),
+}))
+
+# 1) Equities & Indices (NSE / BSE)
+df_rel = client.equity.get_ohlcv_dataframe("RELIANCE", Interval.D1, source="breeze", exchange="NSE")
+
+# 2) 1-Minute / 1-Second Candles for Commodities & Futures (MCX)
+df_crude = client.equity.get_ohlcv_dataframe(
+    "CRUDEOIL", Interval.M1,
+    datetime(2026, 9, 20, tzinfo=timezone.utc),
+    datetime(2026, 9, 25, tzinfo=timezone.utc),
+    source="breeze", exchange="MCX",
+)
+
+# 3) Commodity / Equity Options
+contract = OptionContract(
+    underlying="CRUDEOIL",
+    expiry=date(2026, 10, 16),
+    strike=Decimal("5600"),
+    option_type=OptionType.CALL,
+    exchange="MCX",
+)
+bars = client.derivatives.get_ohlcv(contract, Interval.M5, source="breeze")
+```
+
+#### 3. Portfolio & Trading
+```python
+from bandl.models.account.types import OrderSide, OrderType
+from bandl.models.trading import OrderRequest, ProductType
+
+# Demat holdings, cash balances, and margin info
+holdings = client.portfolio.get_holdings(source="breeze")
+balances = client.portfolio.get_balances(source="breeze")
+margin   = client.portfolio.get_margin(source="breeze")
+
+# Place a regular order
+ack = client.trade.place_order(
+    OrderRequest(
+        symbol="RELIANCE",
+        exchange="NSE",
+        side=OrderSide.BUY,
+        order_type=OrderType.LIMIT,
+        quantity=Decimal(10),
+        price=Decimal("2450.00"),
+        product=ProductType.DELIVERY,
+    ),
+    source="breeze",
+)
+print("Order placed ID:", ack.order_id)
 ```
 
 ### Typed bars instead of pandas

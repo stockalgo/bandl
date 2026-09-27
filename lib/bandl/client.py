@@ -24,6 +24,7 @@ from bandl.models.market import (
 )
 from bandl.models.market.types import AssetType, Interval
 from bandl.portfolio.facet import PortfolioFacet
+from bandl.providers.breeze import BreezeProvider
 from bandl.providers.crypto.binance import BinanceProvider
 from bandl.providers.crypto.coindcx import CoinDCXProvider
 from bandl.providers.crypto.common import is_crypto_futures
@@ -36,6 +37,7 @@ _PROVIDER_CLASSES: dict[str, type] = {
     "coindcx": CoinDCXProvider,
     "zerodha": ZerodhaProvider,
     "dhan": DhanProvider,
+    "breeze": BreezeProvider,
 }
 
 
@@ -211,6 +213,7 @@ class Bandl:
         self._registry.register("coindcx", CoinDCXProvider(self._config))
         self._registry.register("zerodha", ZerodhaProvider(self._config))
         self._registry.register("dhan", DhanProvider(self._config))
+        self._registry.register("breeze", BreezeProvider(self._config))
         if custom_providers:
             for name, prov in custom_providers.items():
                 self._registry.register(name, prov)
