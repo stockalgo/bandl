@@ -10,7 +10,7 @@ from bandl.config import BandlConfig, ProviderSettings
 from bandl.core.contracts import parse_option_symbol
 from bandl.core.http import HttpClient
 from bandl.core.time import ensure_utc
-from bandl.exceptions import AuthenticationError, ProviderError
+from bandl.exceptions import AuthenticationError, ConfigurationError, ProviderError
 from bandl.models.market import OHLCV, OptionChainEntry, OptionContract, OptionQuote
 from bandl.models.market.types import Interval
 from bandl.providers.dhan.common import (
@@ -46,8 +46,22 @@ class DhanProvider(DhanTradingMixin, DhanPortfolioMixin):
     def __init__(self, config: BandlConfig, settings: ProviderSettings | None = None) -> None:
         self._config = config
         self._settings = settings or config.providers.get("dhan") or ProviderSettings()
+        if (
+            self._settings.account_id
+            and self._settings.api_key
+            and self._settings.account_id != self._settings.api_key
+        ):
+            raise ConfigurationError(
+                f"Conflicting Dhan account_id ({self._settings.account_id!r}) and "
+                f"api_key ({self._settings.api_key!r})"
+            )
         self._http = HttpClient(config)
         self._scrip = ScripMaster(self._http, self.provider_id)
+
+    @property
+    def bound_account_id(self) -> str | None:
+        """The verified bound Dhan client ID."""
+        return self._settings.account_id or self._settings.api_key
 
     # -- auth -----------------------------------------------------------------
 

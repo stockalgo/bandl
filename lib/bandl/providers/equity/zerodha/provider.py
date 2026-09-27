@@ -8,13 +8,16 @@ from datetime import datetime
 from decimal import Decimal
 
 from bandl.config import BandlConfig, ProviderSettings
+from bandl.core.account_filters import AccountFilters
 from bandl.core.http import HttpClient
 from bandl.core.intervals import map_interval
 from bandl.core.resolver import ResolvedSymbol, resolve_symbol
 from bandl.core.time import ensure_utc
 from bandl.exceptions import AuthenticationError, ProviderError, SymbolNotFoundError
+from bandl.models.account import AccountOrder
 from bandl.models.market import OHLCV, SymbolInfo
 from bandl.models.market.types import AssetType, Interval
+from bandl.models.trading import Order
 from bandl.providers.equity.zerodha.account import ZerodhaAccountMixin
 from bandl.providers.equity.zerodha.common import KITE_API
 from bandl.providers.equity.zerodha.common import parse_kite_timestamp as _parse_kite_timestamp
@@ -65,6 +68,11 @@ class ZerodhaProvider(ZerodhaAccountMixin, ZerodhaTradingMixin, ZerodhaPortfolio
         self._settings = settings or config.providers.get("zerodha") or ProviderSettings()
         self._http = HttpClient(config)
         self._instrument_cache: dict[str, list[dict[str, str]]] = {}
+
+    @property
+    def bound_account_id(self) -> str | None:
+        """Bound account ID from explicit configuration (unverified with Kite API)."""
+        return self._settings.account_id
 
     def _auth_headers(self) -> dict[str, str]:
         key = self._settings.api_key
@@ -240,3 +248,14 @@ class ZerodhaProvider(ZerodhaAccountMixin, ZerodhaTradingMixin, ZerodhaPortfolio
             if limit is not None and len(out) >= limit:
                 break
         return out
+
+    def get_orders(
+        self,
+        filters: AccountFilters | None = None,
+        *,
+        symbol: str | None = None,
+        account_id: str | None = None,
+    ) -> list[AccountOrder] | list[Order]:
+        if filters is not None:
+            return self.get_account_orders(filters)
+        return self.get_trading_orders(symbol=symbol, account_id=account_id)

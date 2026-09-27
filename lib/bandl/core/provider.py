@@ -11,7 +11,15 @@ from bandl.core.capabilities import AccountCapabilities, PortfolioCapabilities, 
 from bandl.models.account import AccountFill, AccountOrder, LedgerEntry, PnLRecord
 from bandl.models.market import OHLCV, SymbolInfo
 from bandl.models.market.types import Interval
-from bandl.models.trading import Balance, Holding, MarginInfo, Order, OrderRequest, Position
+from bandl.models.trading import (
+    Balance,
+    Holding,
+    MarginInfo,
+    Order,
+    OrderAcknowledgement,
+    OrderRequest,
+    Position,
+)
 
 
 @runtime_checkable
@@ -86,41 +94,89 @@ class AccountHistoryProvider(Protocol):
 
 @runtime_checkable
 class TradingProvider(Protocol):
+    """Base trading provider protocol for capability discovery."""
+
     provider_id: str
 
     def trade_capabilities(self) -> TradeCapabilities: ...
 
-    def place_order(self, order: OrderRequest) -> Order: ...
+
+@runtime_checkable
+class FullTradingProvider(TradingProvider, Protocol):
+    """Full-featured trading provider supporting the complete set of trade operations."""
+
+    bound_account_id: str | None
+
+    def place_order(self, order: OrderRequest, *, account_id: str | None = None) -> Order: ...
+
+    def place_order_ack(
+        self, order: OrderRequest, *, account_id: str | None = None
+    ) -> OrderAcknowledgement: ...
 
     def modify_order(
         self,
         order_id: str,
         *,
+        account_id: str | None = None,
         price: Any = None,
         trigger_price: Any = None,
         quantity: Any = None,
         validity: Any = None,
     ) -> Order: ...
 
-    def cancel_order(self, order_id: str) -> Order: ...
+    def modify_order_ack(
+        self,
+        order_id: str,
+        *,
+        account_id: str | None = None,
+        price: Any = None,
+        trigger_price: Any = None,
+        quantity: Any = None,
+        validity: Any = None,
+    ) -> OrderAcknowledgement: ...
 
-    def get_open_orders(self, *, symbol: str | None = None) -> list[Order]: ...
+    def cancel_order(self, order_id: str, *, account_id: str | None = None) -> Order: ...
 
-    def get_order(self, order_id: str) -> Order: ...
+    def cancel_order_ack(
+        self, order_id: str, *, account_id: str | None = None
+    ) -> OrderAcknowledgement: ...
 
-    def get_trades(self, *, symbol: str | None = None) -> list[AccountFill]: ...
+    def get_open_orders(
+        self, *, symbol: str | None = None, account_id: str | None = None
+    ) -> list[Order]: ...
+
+    def get_orders(
+        self, *, symbol: str | None = None, account_id: str | None = None
+    ) -> list[Order]: ...
+
+    def get_order(self, order_id: str, *, account_id: str | None = None) -> Order: ...
+
+    def get_order_history(self, order_id: str, *, account_id: str | None = None) -> list[Order]: ...
+
+    def get_trades(
+        self, *, symbol: str | None = None, account_id: str | None = None
+    ) -> list[AccountFill]: ...
 
 
 @runtime_checkable
 class PortfolioProvider(Protocol):
+    """Base portfolio provider protocol for capability discovery."""
+
     provider_id: str
 
     def portfolio_capabilities(self) -> PortfolioCapabilities: ...
 
-    def get_positions(self) -> list[Position]: ...
 
-    def get_holdings(self) -> list[Holding]: ...
+@runtime_checkable
+class FullPortfolioProvider(PortfolioProvider, Protocol):
+    """Full-featured portfolio provider supporting all portfolio reads."""
 
-    def get_balances(self) -> list[Balance]: ...
+    bound_account_id: str | None
 
-    def get_margin(self) -> MarginInfo: ...
+    def get_positions(self, *, account_id: str | None = None) -> list[Position]: ...
+
+    def get_holdings(self, *, account_id: str | None = None) -> list[Holding]: ...
+
+    def get_balances(self, *, account_id: str | None = None) -> list[Balance]: ...
+
+    def get_margin(self, *, account_id: str | None = None) -> MarginInfo: ...

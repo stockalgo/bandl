@@ -32,6 +32,9 @@ class OrderStatus(str, Enum):
     CANCELLED = "cancelled"
     REJECTED = "rejected"
     EXPIRED = "expired"
+    TRIGGER_PENDING = "trigger_pending"
+    MODIFY_PENDING = "modify_pending"
+    CANCEL_PENDING = "cancel_pending"
     UNKNOWN = "unknown"
 
 

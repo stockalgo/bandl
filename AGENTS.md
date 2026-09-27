@@ -170,15 +170,20 @@ USER WANTS ACCOUNT DATA (orders/fills/PnL)?
 ### `client.trade`
 
 ```python
-client.trade.place_order(order: OrderRequest, *, source: str) -> Order
-client.trade.modify_order(order_id, *, source, price=None, trigger_price=None, quantity=None, validity=None) -> Order
-client.trade.cancel_order(order_id, *, source: str) -> Order
-client.trade.get_open_orders(*, source: str, symbol: str | None = None) -> list[Order]
-client.trade.get_order(order_id, *, source: str) -> Order
-client.trade.get_trades(*, source: str, symbol: str | None = None) -> list[AccountFill]   # today's fills
+client.trade.place_order(order: OrderRequest, *, source: str, account_id: str | None = None) -> Order
+client.trade.place_order_ack(order: OrderRequest, *, source: str, account_id: str | None = None) -> OrderAcknowledgement
+client.trade.modify_order(order_id, *, source, account_id=None, price=None, trigger_price=None, quantity=None, validity=None) -> Order
+client.trade.modify_order_ack(order_id, *, source, account_id=None, price=None, trigger_price=None, quantity=None, validity=None) -> OrderAcknowledgement
+client.trade.cancel_order(order_id, *, source: str, account_id: str | None = None) -> Order
+client.trade.cancel_order_ack(order_id, *, source: str, account_id: str | None = None) -> OrderAcknowledgement
+client.trade.get_open_orders(*, source: str, symbol: str | None = None, account_id: str | None = None) -> list[Order]
+client.trade.get_orders(*, source: str, symbol: str | None = None, account_id: str | None = None) -> list[Order]  # all session orders (open + terminal)
+client.trade.get_order(order_id, *, source: str, account_id: str | None = None) -> Order
+client.trade.get_order_history(order_id, *, source: str, account_id: str | None = None) -> list[Order]  # lifecycle transitions
+client.trade.get_trades(*, source: str, symbol: str | None = None, account_id: str | None = None) -> list[AccountFill]   # today's fills
 client.trade.capabilities(source: str) -> TradeCapabilities
 client.trade.supports(source: str, capability: str) -> bool
-# + get_open_orders_dataframe / get_trades_dataframe
+# + get_open_orders_dataframe / get_orders_dataframe / get_order_history_dataframe / get_trades_dataframe
 ```
 
 `OrderRequest` (from `bandl.models.trading`): pick **one** instrument form —
@@ -227,13 +232,22 @@ margin = client.portfolio.get_margin(source="dhan")
 | capability | zerodha | dhan |
 |---|---|---|
 | place / modify / cancel (regular only) | ✅ | ✅ (static-IP whitelist required) |
-| get_open_orders / get_order / get_trades | ✅ | ✅ |
+| place_order_ack / modify_order_ack / cancel_order_ack | ✅ | ✅ |
+| get_open_orders / get_orders / get_order / get_trades | ✅ | ✅ |
+| get_order_history (state transitions) | ✅ | ❌ not supported by Dhan API (`UnsupportedCapabilityError`) |
 | positions / holdings / balances / margin | ✅ | ✅ |
 | Dhan `get_holdings` with zero holdings | — | returns `[]` (Dhan's HTTP 500 `DH-1111` "No holdings available" is treated as empty, not an error) |
 | AMO / CO / BO / iceberg / GTT / Forever / slicing / margin preview / convert_position | ❌ not yet | ❌ not yet |
 | leverage / margin-mode (crypto) | n/a | n/a |
 
-**Errors:** reuses existing exceptions — `AuthenticationError` (missing/invalid creds, or Dhan static-IP not whitelisted), `UnsupportedCapabilityError` (source has no trading/portfolio provider, or `variety != REGULAR`), `ProviderError` (unsupported `product`/`validity`/`order_type` for that broker this release, missing `trigger_price` on a stop order, upstream failure).
+**Errors:**
+- `InvalidOrderError`: Client-side validation failure (e.g., negative/non-finite quantity, fractional shares for equity/F&O, tag/correlationId too long, missing price/trigger).
+- `OrderRejectedError`: Explicit rejection by broker or exchange (e.g. risk check, margin, price collar).
+- `UncertainOutcomeError`: Mutation request was sent or timed out, or subsequent status retrieval failed (zero blind mutation retries; callers must inspect `err.operation`, `err.order_id`, and perform recovery reads via `get_orders` / `get_open_orders`).
+- `InsufficientFundsError`: Explicit rejection due to lack of margin/capital.
+- `AuthenticationError`: Missing/invalid creds, or Dhan static-IP not whitelisted.
+- `UnsupportedCapabilityError`: Feature not supported by provider (e.g. unsupported product, reduce_only on spot, variety != REGULAR).
+- `ProviderError`: Upstream or downstream broker error.
 
 ---
 

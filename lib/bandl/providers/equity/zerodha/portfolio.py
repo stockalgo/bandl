@@ -13,6 +13,7 @@ from bandl.models.trading import Balance, Holding, MarginInfo, Position, Product
 from bandl.providers.equity.zerodha.account import _canonical_symbol, _kite_segment
 from bandl.providers.equity.zerodha.common import KITE_API, kite_unwrap
 from bandl.providers.equity.zerodha.trading import _PRODUCT_IN
+from bandl.trade.validation import verify_account_binding
 
 if TYPE_CHECKING:
     from bandl.providers.equity.zerodha.provider import ZerodhaProvider
@@ -43,7 +44,8 @@ class ZerodhaPortfolioMixin:
             margin=CapabilityDetail(supported=True, notes=["equity segment"]),
         )
 
-    def get_positions(self: ZerodhaProvider) -> list[Position]:
+    def get_positions(self: ZerodhaProvider, *, account_id: str | None = None) -> list[Position]:
+        verify_account_binding(self, account_id)
         raw = self._http.get_json(
             f"{KITE_API}/portfolio/positions",
             provider=self.provider_id,
@@ -80,6 +82,7 @@ class ZerodhaPortfolioMixin:
                     unrealized_pnl=_dec(row.get("unrealised")),
                     pnl=_dec(row.get("pnl")),
                     source=self.provider_id,
+                    account_id=self.bound_account_id,
                     segment=_kite_segment(exchange, product),
                     symbol=_canonical_symbol(exchange, tsym),
                     symbol_native=tsym,
@@ -89,12 +92,14 @@ class ZerodhaPortfolioMixin:
                         self.provider_id,
                         "position",
                         f"{exchange}:{tsym}:{product}",
+                        account_id=self.bound_account_id,
                     ),
                 ),
             )
         return out
 
-    def get_holdings(self: ZerodhaProvider) -> list[Holding]:
+    def get_holdings(self: ZerodhaProvider, *, account_id: str | None = None) -> list[Holding]:
+        verify_account_binding(self, account_id)
         raw = self._http.get_json(
             f"{KITE_API}/portfolio/holdings",
             provider=self.provider_id,
@@ -123,12 +128,18 @@ class ZerodhaPortfolioMixin:
                     collateral_type=row.get("collateral_type") or None,
                     isin=row.get("isin") or None,
                     source=self.provider_id,
+                    account_id=self.bound_account_id,
                     segment=Segment.EQUITY_CASH,
                     symbol=_canonical_symbol(exchange, tsym),
                     symbol_native=tsym,
                     currency="INR",
                     provider_native=row,
-                    dedup_key=make_dedup_key(self.provider_id, "holding", f"{exchange}:{tsym}"),
+                    dedup_key=make_dedup_key(
+                        self.provider_id,
+                        "holding",
+                        f"{exchange}:{tsym}",
+                        account_id=self.bound_account_id,
+                    ),
                 ),
             )
         return out
@@ -144,7 +155,8 @@ class ZerodhaPortfolioMixin:
             raise ProviderError(self.provider_id, "Unexpected margins payload")
         return payload
 
-    def get_balances(self: ZerodhaProvider) -> list[Balance]:
+    def get_balances(self: ZerodhaProvider, *, account_id: str | None = None) -> list[Balance]:
+        verify_account_binding(self, account_id)
         payload = self._margins()
         out: list[Balance] = []
         for seg_name, seg_row in payload.items():
@@ -158,6 +170,7 @@ class ZerodhaPortfolioMixin:
             out.append(
                 Balance(
                     source=self.provider_id,
+                    account_id=self.bound_account_id,
                     segment=segment,
                     currency="INR",
                     available=net,
@@ -168,7 +181,8 @@ class ZerodhaPortfolioMixin:
             )
         return out
 
-    def get_margin(self: ZerodhaProvider) -> MarginInfo:
+    def get_margin(self: ZerodhaProvider, *, account_id: str | None = None) -> MarginInfo:
+        verify_account_binding(self, account_id)
         payload = self._margins()
         seg_row = payload.get("equity")
         if not isinstance(seg_row, dict):
@@ -179,6 +193,7 @@ class ZerodhaPortfolioMixin:
         used = _dec(utilised.get("debits")) or Decimal(0)
         return MarginInfo(
             source=self.provider_id,
+            account_id=self.bound_account_id,
             currency="INR",
             available=net,
             used=used,

@@ -199,13 +199,21 @@ class _DerivativesFacet:
 class Bandl:
     """Unified market data and account history."""
 
-    def __init__(self, config: BandlConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: BandlConfig | None = None,
+        *,
+        custom_providers: dict[str, Any] | None = None,
+    ) -> None:
         self._config = config or BandlConfig()
         self._registry = ProviderRegistry()
         self._registry.register("binance", BinanceProvider(self._config))
         self._registry.register("coindcx", CoinDCXProvider(self._config))
         self._registry.register("zerodha", ZerodhaProvider(self._config))
         self._registry.register("dhan", DhanProvider(self._config))
+        if custom_providers:
+            for name, prov in custom_providers.items():
+                self._registry.register(name, prov)
         self.crypto = _Facet(self, self._config.default_crypto_provider)
         self.equity = _Facet(self, self._config.default_equity_provider)
         self.derivatives = _DerivativesFacet(self, self._config.default_derivatives_provider)
@@ -375,3 +383,7 @@ class Bandl:
         if cls is None:
             raise BandlError(f"Unknown provider '{name}'")
         self._registry.register(name, cls(self._config, settings))
+
+    def register_provider(self, name: str, provider: Any) -> None:
+        """Register or inject a custom or mock provider instance."""
+        self._registry.register(name, provider)

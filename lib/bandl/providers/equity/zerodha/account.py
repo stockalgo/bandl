@@ -92,7 +92,7 @@ class ZerodhaAccountMixin:
             ),
         )
 
-    def get_orders(self: ZerodhaProvider, filters: AccountFilters) -> list[AccountOrder]:
+    def get_account_orders(self: ZerodhaProvider, filters: AccountFilters) -> list[AccountOrder]:
         require_capability(
             self.provider_id,
             "orders",
@@ -150,12 +150,15 @@ class ZerodhaAccountMixin:
                     if row.get("exchange_update_timestamp")
                     else None,
                     source=self.provider_id,
+                    account_id=self.bound_account_id,
                     segment=_kite_segment(exchange, str(row.get("product", ""))),
                     symbol=sym,
                     symbol_native=tsym,
                     currency="INR",
                     provider_native=row,
-                    dedup_key=make_dedup_key(self.provider_id, "order", oid),
+                    dedup_key=make_dedup_key(
+                        self.provider_id, "order", oid, account_id=self.bound_account_id
+                    ),
                     metadata={"product": row.get("product"), "variety": row.get("variety")},
                 ),
             )
@@ -214,12 +217,15 @@ class ZerodhaAccountMixin:
                     fee=None,
                     executed_at=executed,
                     source=self.provider_id,
+                    account_id=self.bound_account_id,
                     segment=_kite_segment(exchange, str(row.get("product", ""))),
                     symbol=sym,
                     symbol_native=tsym,
                     currency="INR",
                     provider_native=row,
-                    dedup_key=make_dedup_key(self.provider_id, "fill", fid),
+                    dedup_key=make_dedup_key(
+                        self.provider_id, "fill", fid, account_id=self.bound_account_id
+                    ),
                 ),
             )
         if filters.limit is not None:

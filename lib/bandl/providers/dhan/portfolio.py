@@ -12,6 +12,7 @@ from bandl.models.account.types import OrderSide, Segment
 from bandl.models.trading import Balance, Holding, MarginInfo, Position, ProductType
 from bandl.providers.dhan.common import DHAN_API, SEGMENT_TO_EXCHANGE
 from bandl.providers.dhan.trading import _PRODUCT_IN, _bandl_segment
+from bandl.trade.validation import verify_account_binding
 
 if TYPE_CHECKING:
     from bandl.providers.dhan.provider import DhanProvider
@@ -45,7 +46,8 @@ class DhanPortfolioMixin:
             ),
         )
 
-    def get_positions(self: DhanProvider) -> list[Position]:
+    def get_positions(self: DhanProvider, *, account_id: str | None = None) -> list[Position]:
+        verify_account_binding(self, account_id)
         raw = self._http.get_json(
             f"{DHAN_API}/positions",
             provider=self.provider_id,
@@ -86,6 +88,7 @@ class DhanPortfolioMixin:
                     unrealized_pnl=unrealized,
                     pnl=pnl,
                     source=self.provider_id,
+                    account_id=self.bound_account_id,
                     segment=_bandl_segment(seg_raw),
                     symbol=f"{exchange}:{tsym}" if exchange and tsym else tsym,
                     symbol_native=tsym,
@@ -96,12 +99,14 @@ class DhanPortfolioMixin:
                         self.provider_id,
                         "position",
                         f"{seg_raw}:{tsym}:{product}",
+                        account_id=self.bound_account_id,
                     ),
                 ),
             )
         return out
 
-    def get_holdings(self: DhanProvider) -> list[Holding]:
+    def get_holdings(self: DhanProvider, *, account_id: str | None = None) -> list[Holding]:
+        verify_account_binding(self, account_id)
         try:
             raw = self._http.get_json(
                 f"{DHAN_API}/holdings",
@@ -136,13 +141,19 @@ class DhanPortfolioMixin:
                     collateral_type=None,
                     isin=row.get("isin") or None,
                     source=self.provider_id,
+                    account_id=self.bound_account_id,
                     segment=Segment.EQUITY_CASH,
                     symbol=f"{exchange}:{tsym}" if tsym else tsym,
                     symbol_native=tsym,
                     instrument_id=str(row["securityId"]) if row.get("securityId") else None,
                     currency="INR",
                     provider_native=row,
-                    dedup_key=make_dedup_key(self.provider_id, "holding", f"{exchange}:{tsym}"),
+                    dedup_key=make_dedup_key(
+                        self.provider_id,
+                        "holding",
+                        f"{exchange}:{tsym}",
+                        account_id=self.bound_account_id,
+                    ),
                 ),
             )
         return out
@@ -157,13 +168,15 @@ class DhanPortfolioMixin:
             raise ProviderError(self.provider_id, "Unexpected fundlimit payload")
         return raw
 
-    def get_balances(self: DhanProvider) -> list[Balance]:
+    def get_balances(self: DhanProvider, *, account_id: str | None = None) -> list[Balance]:
+        verify_account_binding(self, account_id)
         raw = self._fund_limit()
         available = _dec(raw.get("availabelBalance")) or Decimal(0)
         used = _dec(raw.get("utilizedAmount")) or Decimal(0)
         return [
             Balance(
                 source=self.provider_id,
+                account_id=self.bound_account_id,
                 segment=None,
                 currency="INR",
                 available=available,
@@ -173,12 +186,14 @@ class DhanPortfolioMixin:
             ),
         ]
 
-    def get_margin(self: DhanProvider) -> MarginInfo:
+    def get_margin(self: DhanProvider, *, account_id: str | None = None) -> MarginInfo:
+        verify_account_binding(self, account_id)
         raw = self._fund_limit()
         available = _dec(raw.get("availabelBalance")) or Decimal(0)
         used = _dec(raw.get("utilizedAmount")) or Decimal(0)
         return MarginInfo(
             source=self.provider_id,
+            account_id=self.bound_account_id,
             currency="INR",
             available=available,
             used=used,
@@ -186,4 +201,21 @@ class DhanPortfolioMixin:
             span=None,
             exposure=None,
             provider_native=raw,
+        )
+
+    def calculate_basket_margin(
+        self: DhanProvider,
+        orders: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Query Dhan's multi-order margin calculator (/margincalculator/multi)."""
+        client_id = self._require_client_id()
+        payload = {
+            "dhanClientId": client_id,
+            "scripList": orders,
+        }
+        return self._http.post_json(
+            f"{DHAN_API}/margincalculator/multi",
+            provider=self.provider_id,
+            body=payload,
+            headers=self._auth_headers(),
         )

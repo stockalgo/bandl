@@ -12,6 +12,7 @@ from bandl.core.dataframe import models_to_dataframe
 from bandl.core.provider import PortfolioProvider
 from bandl.exceptions import ConfigurationError, UnsupportedCapabilityError
 from bandl.models.trading import Balance, Holding, MarginInfo, Position
+from bandl.trade.validation import verify_account_binding
 
 
 def _require(provider_id: str, capability: str, supported: bool) -> None:
@@ -35,35 +36,51 @@ class PortfolioFacet:
     def supports(self, source: str, capability: str) -> bool:
         return self.capabilities(source).supports(capability)
 
-    def get_positions(self, *, source: str) -> list[Position]:
+    def get_positions(self, *, source: str, account_id: str | None = None) -> list[Position]:
         prov = self._provider(source)
         caps = prov.portfolio_capabilities()
         _require(source, "positions", caps.positions.supported)
-        return prov.get_positions()
+        fn = getattr(prov, "get_positions", None)
+        if not callable(fn):
+            raise UnsupportedCapabilityError(source, "positions")
+        verify_account_binding(prov, account_id)
+        return prov.get_positions(account_id=account_id)
 
     def get_positions_dataframe(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
         return models_to_dataframe(self.get_positions(*args, **kwargs))
 
-    def get_holdings(self, *, source: str) -> list[Holding]:
+    def get_holdings(self, *, source: str, account_id: str | None = None) -> list[Holding]:
         prov = self._provider(source)
         caps = prov.portfolio_capabilities()
         _require(source, "holdings", caps.holdings.supported)
-        return prov.get_holdings()
+        fn = getattr(prov, "get_holdings", None)
+        if not callable(fn):
+            raise UnsupportedCapabilityError(source, "holdings")
+        verify_account_binding(prov, account_id)
+        return prov.get_holdings(account_id=account_id)
 
     def get_holdings_dataframe(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
         return models_to_dataframe(self.get_holdings(*args, **kwargs))
 
-    def get_balances(self, *, source: str) -> list[Balance]:
+    def get_balances(self, *, source: str, account_id: str | None = None) -> list[Balance]:
         prov = self._provider(source)
         caps = prov.portfolio_capabilities()
         _require(source, "balances", caps.balances.supported)
-        return prov.get_balances()
+        fn = getattr(prov, "get_balances", None)
+        if not callable(fn):
+            raise UnsupportedCapabilityError(source, "balances")
+        verify_account_binding(prov, account_id)
+        return prov.get_balances(account_id=account_id)
 
     def get_balances_dataframe(self, *args: Any, **kwargs: Any) -> pd.DataFrame:
         return models_to_dataframe(self.get_balances(*args, **kwargs))
 
-    def get_margin(self, *, source: str) -> MarginInfo:
+    def get_margin(self, *, source: str, account_id: str | None = None) -> MarginInfo:
         prov = self._provider(source)
         caps = prov.portfolio_capabilities()
         _require(source, "margin", caps.margin.supported)
-        return prov.get_margin()
+        fn = getattr(prov, "get_margin", None)
+        if not callable(fn):
+            raise UnsupportedCapabilityError(source, "margin")
+        verify_account_binding(prov, account_id)
+        return prov.get_margin(account_id=account_id)

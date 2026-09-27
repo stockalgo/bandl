@@ -156,7 +156,9 @@ def test_place_option_order_via_contract() -> None:
 
 def test_modify_order() -> None:
     prov = _provider()
-    prov._http.put_json = MagicMock(return_value={})
+    prov._http.put_json = MagicMock(
+        return_value={"orderId": "112111182198", "orderStatus": "TRANSIT"}
+    )
     prov._http.get_json = MagicMock(return_value=_ORDER_ROW)
 
     order = prov.modify_order("112111182198", price=Decimal("510"))
@@ -167,7 +169,9 @@ def test_modify_order() -> None:
 
 def test_cancel_order() -> None:
     prov = _provider()
-    prov._http.delete_json = MagicMock(return_value={})
+    prov._http.delete_json = MagicMock(
+        return_value={"orderId": "112111182198", "orderStatus": "CANCELLED"}
+    )
     prov._http.get_json = MagicMock(return_value=_ORDER_ROW)
 
     order = prov.cancel_order("112111182198")

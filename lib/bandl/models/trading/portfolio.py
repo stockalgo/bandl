@@ -50,6 +50,7 @@ class Balance(BaseModel):
     model_config = {"extra": "forbid"}
 
     source: str
+    account_id: str | None = None
     segment: str | None = None
     currency: str = "INR"
     available: Decimal
@@ -64,6 +65,7 @@ class MarginInfo(BaseModel):
     model_config = {"extra": "forbid"}
 
     source: str
+    account_id: str | None = None
     currency: str = "INR"
     available: Decimal
     used: Decimal

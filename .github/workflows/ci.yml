@@ -30,19 +30,10 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Ruff check
-        run: >-
-          ruff check
-          lib/bandl/account lib/bandl/core lib/bandl/models lib/bandl/providers
-          lib/bandl/client.py lib/bandl/config.py lib/bandl/exceptions.py
-          tests/bandl
+        run: ruff check lib/bandl tests/bandl
 
       - name: Ruff format
-        run: >-
-          ruff format
-          lib/bandl/account lib/bandl/core lib/bandl/models lib/bandl/providers
-          lib/bandl/client.py lib/bandl/config.py lib/bandl/exceptions.py
-          tests/bandl
-          --check
+        run: ruff format lib/bandl tests/bandl --check
 
   test:
     name: Test (Python ${{ matrix.python-version }})

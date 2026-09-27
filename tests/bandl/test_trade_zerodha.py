@@ -112,7 +112,9 @@ def test_sl_order_requires_trigger_price() -> None:
 
 def test_modify_order() -> None:
     prov = _provider()
-    prov._http.put_json = MagicMock(return_value={"status": "success", "data": {}})
+    prov._http.put_json = MagicMock(
+        return_value={"status": "success", "data": {"order_id": "151220000000000"}}
+    )
     prov._http.get_json = MagicMock(return_value={"status": "success", "data": [_ORDER_ROW]})
 
     order = prov.modify_order("151220000000000", price=Decimal("2510"))
@@ -123,7 +125,9 @@ def test_modify_order() -> None:
 
 def test_cancel_order() -> None:
     prov = _provider()
-    prov._http.delete_json = MagicMock(return_value={"status": "success", "data": {}})
+    prov._http.delete_json = MagicMock(
+        return_value={"status": "success", "data": {"order_id": "151220000000000"}}
+    )
     prov._http.get_json = MagicMock(return_value={"status": "success", "data": [_ORDER_ROW]})
 
     order = prov.cancel_order("151220000000000")

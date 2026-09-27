@@ -275,6 +275,8 @@ Pin a tag (e.g. `.../blob/v0.4.0/AGENTS.md`) for a fixed version. See
 
 - [docs/BANDL.md](docs/BANDL.md) — layout & design notes
 - [docs/ACCOUNT_HISTORY.md](docs/ACCOUNT_HISTORY.md) — account facet
+- [docs/EXECUTION_MIGRATION.md](docs/EXECUTION_MIGRATION.md) — live execution & recovery guide
+- [docs/PROVIDER_AUTHOR_GUIDE.md](docs/PROVIDER_AUTHOR_GUIDE.md) — building execution adapters
 - [CONTRIBUTING.md](CONTRIBUTING.md) — tests, Ruff, pull requests
 - [SECURITY.md](SECURITY.md) — reporting vulnerabilities
 

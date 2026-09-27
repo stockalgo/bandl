@@ -13,6 +13,13 @@ class ProviderSettings(BaseModel):
     api_key: str | None = Field(default=None, repr=False)
     api_secret: str | None = Field(default=None, repr=False)
     access_token: str | None = Field(default=None, repr=False)
+    account_id: str | None = Field(
+        default=None,
+        description=(
+            "Explicit local account identity binding. It is not proof the broker verified "
+            "that identity."
+        ),
+    )
     base_url: str | None = None
 
 

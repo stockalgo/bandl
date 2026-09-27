@@ -41,8 +41,15 @@ class TradeCapabilities(BaseModel):
     modify: CapabilityDetail = Field(default_factory=CapabilityDetail)
     cancel: CapabilityDetail = Field(default_factory=CapabilityDetail)
     get_open_orders: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    get_orders: CapabilityDetail = Field(default_factory=CapabilityDetail)
     get_order: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    get_order_history: CapabilityDetail = Field(default_factory=CapabilityDetail)
     get_trades: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    idempotency: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    order_types: list[str] = Field(default_factory=list)
+    products: list[str] = Field(default_factory=list)
+    validities: list[str] = Field(default_factory=list)
+    varieties: list[str] = Field(default_factory=list)
 
     def supports(self, capability: str) -> bool:
         detail = getattr(self, capability, None)
@@ -60,6 +67,8 @@ class PortfolioCapabilities(BaseModel):
     holdings: CapabilityDetail = Field(default_factory=CapabilityDetail)
     balances: CapabilityDetail = Field(default_factory=CapabilityDetail)
     margin: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    margin_preview: CapabilityDetail = Field(default_factory=CapabilityDetail)
+    convert_position: CapabilityDetail = Field(default_factory=CapabilityDetail)
 
     def supports(self, capability: str) -> bool:
         detail = getattr(self, capability, None)
