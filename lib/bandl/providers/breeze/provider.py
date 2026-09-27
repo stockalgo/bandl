@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -17,15 +17,19 @@ from bandl.config import BandlConfig, ProviderSettings
 from bandl.core.contracts import parse_option_symbol
 from bandl.core.http import HttpClient
 from bandl.core.intervals import map_interval
-from bandl.core.resolver import ResolvedSymbol, resolve_symbol
+from bandl.core.resolver import resolve_symbol
 from bandl.core.time import ensure_utc
-from bandl.exceptions import AuthenticationError, ProviderError, SymbolNotFoundError
-from bandl.models.market import OHLCV, OptionChainEntry, OptionContract, OptionQuote, OptionType, SymbolInfo
+from bandl.exceptions import AuthenticationError, ProviderError
+from bandl.models.market import (
+    OHLCV,
+    OptionContract,
+    OptionType,
+    SymbolInfo,
+)
 from bandl.models.market.types import AssetType, Interval
 from bandl.providers.breeze.common import (
     BREEZE_API_V1,
     BREEZE_API_V2,
-    EXCHANGE_CODE_MAP,
     INTERVAL_TO_BREEZE,
     MCX_STOCK_CODES,
     SUPPORTED_BREEZE_INTERVALS,
@@ -91,7 +95,7 @@ class BreezeProvider(BreezePortfolioMixin, BreezeTradingMixin):
         if not key or not token:
             raise AuthenticationError(
                 self.provider_id,
-                "Breeze requires api_key and access_token (session token) in BandlConfig.providers['breeze']",
+                "Breeze requires api_key and access_token in BandlConfig.providers['breeze']",
             )
         return key, secret or "", token, user_id
 
@@ -139,18 +143,23 @@ class BreezeProvider(BreezePortfolioMixin, BreezeTradingMixin):
             # Breeze v1 GET requests expect JSON payload in body
             # We use HttpClient or custom request
             import httpx
+
             with httpx.Client(timeout=self._config.timeout_seconds) as client:
                 res = client.request("GET", url, content=body_str, headers=headers)
                 return res.json()
         elif method.upper() == "POST":
-            return self._http.post_json(url, body=body or {}, provider=self.provider_id, headers=headers)
+            return self._http.post_json(
+                url, body=body or {}, provider=self.provider_id, headers=headers
+            )
         elif method.upper() == "PUT":
             import httpx
+
             with httpx.Client(timeout=self._config.timeout_seconds) as client:
                 res = client.request("PUT", url, content=body_str, headers=headers)
                 return res.json()
         elif method.upper() == "DELETE":
             import httpx
+
             with httpx.Client(timeout=self._config.timeout_seconds) as client:
                 res = client.request("DELETE", url, content=body_str, headers=headers)
                 return res.json()
@@ -258,13 +267,15 @@ class BreezeProvider(BreezePortfolioMixin, BreezeTradingMixin):
         try:
             return map_interval(interval, INTERVAL_TO_BREEZE, self.provider_id)
         except Exception as err:
+            supported = sorted(SUPPORTED_BREEZE_INTERVALS)
             raise ProviderError(
                 self.provider_id,
-                f"Unsupported Breeze interval {interval!r}; supported: {sorted(SUPPORTED_BREEZE_INTERVALS)}",
+                f"Unsupported Breeze interval {interval!r}; supported: {supported}",
             ) from err
+        supported_keys = sorted(INTERVAL_TO_BREEZE.keys())
         raise ProviderError(
             self.provider_id,
-            f"Unsupported Breeze interval {interval!r}; supported: {sorted(INTERVAL_TO_BREEZE.keys())}",
+            f"Unsupported Breeze interval {interval!r}; supported: {supported_keys}",
         )
 
     def _parse_candles(
@@ -288,7 +299,9 @@ class BreezeProvider(BreezePortfolioMixin, BreezeTradingMixin):
         if success is None:
             return []
         if not isinstance(success, list):
-            raise ProviderError(self.provider_id, f"Expected Success list from Breeze, got {type(success)}")
+            raise ProviderError(
+                self.provider_id, f"Expected Success list from Breeze, got {type(success)}"
+            )
 
         out: list[OHLCV] = []
         for row in success:
@@ -299,23 +312,29 @@ class BreezeProvider(BreezePortfolioMixin, BreezeTradingMixin):
                 continue
             try:
                 ts = _parse_breeze_timestamp(ts_str)
-                o = _to_decimal(row["open"])
-                h = _to_decimal(row["high"])
-                l = _to_decimal(row["low"])
-                c = _to_decimal(row["close"])
-                v = _to_decimal(row.get("volume") or 0)
-                oi = _to_decimal(row["open_interest"]) if "open_interest" in row and row["open_interest"] is not None else None
+                open_val = _to_decimal(row["open"])
+                high_val = _to_decimal(row["high"])
+                low_val = _to_decimal(row["low"])
+                close_val = _to_decimal(row["close"])
+                vol_val = _to_decimal(row.get("volume") or 0)
+                oi = (
+                    _to_decimal(row["open_interest"])
+                    if "open_interest" in row and row["open_interest"] is not None
+                    else None
+                )
             except Exception as err:
-                raise ProviderError(self.provider_id, f"Failed to parse candle row {row}: {err}") from err
+                raise ProviderError(
+                    self.provider_id, f"Failed to parse candle row {row}: {err}"
+                ) from err
 
             out.append(
                 OHLCV(
                     timestamp=ts,
-                    open=o,
-                    high=h,
-                    low=l,
-                    close=c,
-                    volume=v,
+                    open=open_val,
+                    high=high_val,
+                    low=low_val,
+                    close=close_val,
+                    volume=vol_val,
                     open_interest=oi,
                     symbol=symbol,
                     interval=interval,

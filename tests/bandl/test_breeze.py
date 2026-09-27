@@ -7,7 +7,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from bandl.config import BandlConfig, ProviderSettings
-from bandl.exceptions import AuthenticationError, InsufficientFundsError, OrderRejectedError, ProviderError
+from bandl.exceptions import (
+    AuthenticationError,
+    InsufficientFundsError,
+)
 from bandl.models.account.types import OrderSide, OrderType
 from bandl.models.market import OptionContract, OptionType
 from bandl.models.market.types import Interval

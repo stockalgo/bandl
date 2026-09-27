@@ -55,11 +55,11 @@ class BreezePortfolioMixin:
         raw = self._request_v1("GET", "portfolioholdings", body={})
         if not isinstance(raw, dict):
             raise ProviderError(self.provider_id, "Unexpected positions payload from Breeze")
-        
+
         err = raw.get("Error")
         if err and "no position" in str(err).lower():
             return []
-            
+
         success_list = raw.get("Success")
         if success_list is None:
             return []
@@ -80,7 +80,7 @@ class BreezePortfolioMixin:
         raw = self._request_v1("GET", "dematholdings", body={})
         if not isinstance(raw, dict):
             raise ProviderError(self.provider_id, "Unexpected demat holdings payload from Breeze")
-        
+
         err = raw.get("Error")
         if err and "no holding" in str(err).lower():
             return []
@@ -98,8 +98,7 @@ class BreezePortfolioMixin:
             stock_code = str(row.get("stock_code") or "").strip()
             isin = row.get("stock_ISIN") or None
             qty = _dec(row.get("quantity")) or Decimal(0)
-            avail_qty = _dec(row.get("demat_avail_quantity"))
-            
+
             out.append(
                 Holding(
                     quantity=qty,
@@ -144,20 +143,20 @@ class BreezePortfolioMixin:
     def get_balances(self: BreezeProvider, *, account_id: str | None = None) -> list[Balance]:
         verify_account_binding(self, account_id)
         funds = self._get_funds_data()
-        
+
         # unallocated_balance is available cash balance
         available = _dec(funds.get("unallocated_balance")) or Decimal(0)
-        
+
         # total allocated across segments
         allocated_eq = _dec(funds.get("allocated_equity")) or Decimal(0)
         allocated_fno = _dec(funds.get("allocated_fno")) or Decimal(0)
         allocated_comm = _dec(funds.get("allocated_commodity")) or Decimal(0)
         allocated_cur = _dec(funds.get("allocated_currency")) or Decimal(0)
         blocked = _dec(funds.get("block_by_trade_balance")) or Decimal(0)
-        
+
         used = allocated_eq + allocated_fno + allocated_comm + allocated_cur + blocked
         total = available + used
-        
+
         return [
             Balance(
                 source=self.provider_id,
@@ -174,14 +173,14 @@ class BreezePortfolioMixin:
     def get_margin(self: BreezeProvider, *, account_id: str | None = None) -> MarginInfo:
         verify_account_binding(self, account_id)
         funds = self._get_funds_data()
-        
+
         available = _dec(funds.get("unallocated_balance")) or Decimal(0)
         allocated_eq = _dec(funds.get("allocated_equity")) or Decimal(0)
         allocated_fno = _dec(funds.get("allocated_fno")) or Decimal(0)
         allocated_comm = _dec(funds.get("allocated_commodity")) or Decimal(0)
         allocated_cur = _dec(funds.get("allocated_currency")) or Decimal(0)
         blocked = _dec(funds.get("block_by_trade_balance")) or Decimal(0)
-        
+
         used = allocated_eq + allocated_fno + allocated_comm + allocated_cur + blocked
         total = available + used
 

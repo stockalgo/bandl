@@ -17,13 +17,15 @@ INTERVAL_TO_BREEZE: dict[Interval, str] = {
 }
 
 # Native interval strings supported by Breeze
-SUPPORTED_BREEZE_INTERVALS: frozenset[str] = frozenset({
-    "1second",
-    "1minute",
-    "5minute",
-    "30minute",
-    "1day",
-})
+SUPPORTED_BREEZE_INTERVALS: frozenset[str] = frozenset(
+    {
+        "1second",
+        "1minute",
+        "5minute",
+        "30minute",
+        "1day",
+    }
+)
 
 # bandl exchange code -> Breeze exchange_code (lowercase)
 EXCHANGE_CODE_MAP: dict[str, str] = {

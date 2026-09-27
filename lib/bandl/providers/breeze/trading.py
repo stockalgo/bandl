@@ -8,14 +8,10 @@ from typing import TYPE_CHECKING, Any
 
 from bandl.core.capabilities import CapabilityDetail, TradeCapabilities
 from bandl.exceptions import (
-    AuthenticationError,
     InsufficientFundsError,
-    InvalidOrderError,
     OrderRejectedError,
     ProviderError,
-    UnsupportedCapabilityError,
 )
-from bandl.models.account.base import make_dedup_key
 from bandl.models.account.types import OrderSide, OrderStatus, OrderType, Segment
 from bandl.models.trading import (
     Order,
@@ -23,7 +19,6 @@ from bandl.models.trading import (
     OrderRequest,
     ProductType,
     Validity,
-    Variety,
 )
 from bandl.trade.validation import (
     extract_broker_order_id,
@@ -127,13 +122,15 @@ class BreezeTradingMixin:
 
         # Resolve stock_code and exchange
         stock_code = order.symbol or (order.contract.underlying if order.contract else "")
-        exchange = (order.exchange or (order.contract.exchange if order.contract else "NSE")).upper()
-        
+        exchange = (
+            order.exchange or (order.contract.exchange if order.contract else "NSE")
+        ).upper()
+
         # Product type
         product = _PRODUCT_TO_BREEZE.get(order.product, "cash")
         action = "buy" if order.side == OrderSide.BUY else "sell"
         order_type = "market" if order.order_type == OrderType.MARKET else "limit"
-        
+
         body: dict[str, Any] = {
             "stock_code": stock_code,
             "exchange_code": exchange,
@@ -145,10 +142,10 @@ class BreezeTradingMixin:
             "validity": "ioc" if order.validity == Validity.IOC else "day",
             "disclosed_quantity": str(order.disclosed_quantity or "0"),
         }
-        
+
         if order.trigger_price is not None:
             body["stoploss"] = str(order.trigger_price)
-            
+
         if order.contract is not None:
             c = order.contract
             body["product"] = "options"
@@ -190,7 +187,7 @@ class BreezeTradingMixin:
     ) -> OrderAcknowledgement:
         verify_account_binding(self, account_id)
         clean_order_id = extract_broker_order_id(order_id)
-        
+
         body = {
             "order_id": clean_order_id,
             "exchange_code": exchange.upper(),
