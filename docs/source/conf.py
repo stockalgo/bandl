@@ -20,11 +20,11 @@ sys.path.insert(0, os.path.abspath(r"../../lib"))
 # -- Project information -----------------------------------------------------
 
 project = "bandl"
-copyright = "2021, chiranjeev"
-author = "chiranjeev"
+copyright = "2026, bandl contributors"
+author = "bandl contributors"
 
 # The full version, including alpha/beta/rc tags
-release = "0.1.0"
+release = "0.7.0"
 
 
 # -- General configuration ---------------------------------------------------

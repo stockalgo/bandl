@@ -214,10 +214,10 @@ Dhan options: pass `contract=OptionContract(...)` or `instrument_id=` (+`exchang
 ### `client.portfolio`
 
 ```python
-client.portfolio.get_positions(*, source: str) -> list[Position]   # net book
-client.portfolio.get_holdings(*, source: str) -> list[Holding]
-client.portfolio.get_balances(*, source: str) -> list[Balance]
-client.portfolio.get_margin(*, source: str) -> MarginInfo
+client.portfolio.get_positions(*, source: str, account_id: str | None = None) -> list[Position]   # net book
+client.portfolio.get_holdings(*, source: str, account_id: str | None = None) -> list[Holding]
+client.portfolio.get_balances(*, source: str, account_id: str | None = None) -> list[Balance]
+client.portfolio.get_margin(*, source: str, account_id: str | None = None) -> MarginInfo
 client.portfolio.capabilities(source: str) -> PortfolioCapabilities
 # + get_positions_dataframe / get_holdings_dataframe / get_balances_dataframe
 ```
